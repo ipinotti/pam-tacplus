@@ -1,0 +1,1 @@
+pam_tacplus_la-version.lo pam_tacplus_la-version.o: libtac/lib/version.c

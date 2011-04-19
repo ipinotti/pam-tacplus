@@ -1,0 +1,125 @@
+pam_tacplus_la-header.lo pam_tacplus_la-header.o: libtac/lib/header.c \
+  /opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/netinet/in.h \
+  /opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/features.h \
+  /opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/bits/predefs.h \
+  /opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/sys/cdefs.h \
+  /opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/bits/wordsize.h \
+  /opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/gnu/stubs.h \
+  /opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/gnu/stubs-32.h \
+  /opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/stdint.h \
+  /opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/bits/wchar.h \
+  /opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/sys/socket.h \
+  /opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/sys/uio.h \
+  /opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/sys/types.h \
+  /opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/bits/types.h \
+  /opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/lib/gcc/powerpc-e300c3-linux-gnu/4.1.2/include/stddef.h \
+  /opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/bits/typesizes.h \
+  /opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/time.h \
+  /opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/endian.h \
+  /opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/bits/endian.h \
+  /opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/sys/select.h \
+  /opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/bits/select.h \
+  /opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/bits/sigset.h \
+  /opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/bits/time.h \
+  /opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/sys/sysmacros.h \
+  /opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/bits/pthreadtypes.h \
+  /opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/bits/uio.h \
+  /opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/bits/socket.h \
+  /opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/lib/gcc/powerpc-e300c3-linux-gnu/4.1.2/include-fixed/limits.h \
+  /opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/lib/gcc/powerpc-e300c3-linux-gnu/4.1.2/include-fixed/syslimits.h \
+  /opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/limits.h \
+  /opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/bits/posix1_lim.h \
+  /opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/bits/local_lim.h \
+  /opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/linux/limits.h \
+  /opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/bits/posix2_lim.h \
+  /opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/bits/sockaddr.h \
+  /opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/asm/socket.h \
+  /opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/asm/sockios.h \
+  /opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/bits/in.h \
+  /opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/bits/byteswap.h \
+  libtac/include/tacplus.h libtac/include/libtac.h libtac/lib/xalloc.h \
+  libtac/lib/magic.h
+
+/opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/netinet/in.h:
+
+/opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/features.h:
+
+/opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/bits/predefs.h:
+
+/opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/sys/cdefs.h:
+
+/opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/bits/wordsize.h:
+
+/opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/gnu/stubs.h:
+
+/opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/gnu/stubs-32.h:
+
+/opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/stdint.h:
+
+/opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/bits/wchar.h:
+
+/opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/sys/socket.h:
+
+/opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/sys/uio.h:
+
+/opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/sys/types.h:
+
+/opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/bits/types.h:
+
+/opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/lib/gcc/powerpc-e300c3-linux-gnu/4.1.2/include/stddef.h:
+
+/opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/bits/typesizes.h:
+
+/opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/time.h:
+
+/opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/endian.h:
+
+/opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/bits/endian.h:
+
+/opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/sys/select.h:
+
+/opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/bits/select.h:
+
+/opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/bits/sigset.h:
+
+/opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/bits/time.h:
+
+/opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/sys/sysmacros.h:
+
+/opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/bits/pthreadtypes.h:
+
+/opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/bits/uio.h:
+
+/opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/bits/socket.h:
+
+/opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/lib/gcc/powerpc-e300c3-linux-gnu/4.1.2/include-fixed/limits.h:
+
+/opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/lib/gcc/powerpc-e300c3-linux-gnu/4.1.2/include-fixed/syslimits.h:
+
+/opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/limits.h:
+
+/opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/bits/posix1_lim.h:
+
+/opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/bits/local_lim.h:
+
+/opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/linux/limits.h:
+
+/opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/bits/posix2_lim.h:
+
+/opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/bits/sockaddr.h:
+
+/opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/asm/socket.h:
+
+/opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/asm/sockios.h:
+
+/opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/bits/in.h:
+
+/opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/bits/byteswap.h:
+
+libtac/include/tacplus.h:
+
+libtac/include/libtac.h:
+
+libtac/lib/xalloc.h:
+
+libtac/lib/magic.h:
