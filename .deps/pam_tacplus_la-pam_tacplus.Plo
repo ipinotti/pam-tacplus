@@ -76,12 +76,9 @@ pam_tacplus_la-pam_tacplus.lo pam_tacplus_la-pam_tacplus.o:  \
   /opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/getopt.h \
   libtac/include/tacplus.h libtac/include/libtac.h pam_tacplus.h \
   support.h \
-  /home/tgrande/Projetos/digistarEFM/include/security/pam_modules.h \
-  /home/tgrande/Projetos/digistarEFM/include/security/_pam_types.h \
-  /opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/locale.h \
-  /opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/bits/locale.h \
-  /home/tgrande/Projetos/digistarEFM/include/security/pam_appl.h \
-  /home/tgrande/Projetos/digistarEFM/include/security/_pam_compat.h \
+  /home/tgrande/Projetos/digistarEFM/fs/include/security/pam_modules.h \
+  /home/tgrande/Projetos/digistarEFM/fs/include/security/_pam_types.h \
+  /home/tgrande/Projetos/digistarEFM/fs/include/security/_pam_compat.h \
   config.h
 
 /opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/stdlib.h:
@@ -240,16 +237,10 @@ pam_tacplus.h:
 
 support.h:
 
-/home/tgrande/Projetos/digistarEFM/include/security/pam_modules.h:
+/home/tgrande/Projetos/digistarEFM/fs/include/security/pam_modules.h:
 
-/home/tgrande/Projetos/digistarEFM/include/security/_pam_types.h:
+/home/tgrande/Projetos/digistarEFM/fs/include/security/_pam_types.h:
 
-/opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/locale.h:
-
-/opt/freescale/usr/local/gcc-4.1.78-eglibc-2.5.78-1/powerpc-e300c3-linux-gnu/powerpc-e300c3-linux-gnu/libc/usr/include/bits/locale.h:
-
-/home/tgrande/Projetos/digistarEFM/include/security/pam_appl.h:
-
-/home/tgrande/Projetos/digistarEFM/include/security/_pam_compat.h:
+/home/tgrande/Projetos/digistarEFM/fs/include/security/_pam_compat.h:
 
 config.h:

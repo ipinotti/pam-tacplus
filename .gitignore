@@ -5,3 +5,5 @@
 *~
 *.la
 *.so
+autom4te.cache/
+.*
