@@ -35,3 +35,7 @@ extern int converse (pam_handle_t * pamh, int nargs
 extern void _pam_log (int err, const char *format,...);
 extern void *_xcalloc (size_t size);
 extern char *_pam_get_terminal(pam_handle_t *pamh);
+
+/* CONFIG_PD3 */
+extern void cleanup(tacacs_server_t **server);
+extern int initialize(tacacs_server_t **conf);
