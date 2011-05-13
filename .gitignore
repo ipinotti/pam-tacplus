@@ -7,3 +7,7 @@
 *.so
 autom4te.cache/
 .*
+*.Plo
+.*
+
+

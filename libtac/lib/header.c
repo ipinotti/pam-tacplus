@@ -38,7 +38,7 @@ int tac_encryption;
 char *tac_secret;
 
 /* Pointer to TACACS+ shared login string. */
-char *tac_login = "pap";
+char *tac_login = "login";
 
 /* Returns pre-filled TACACS+ packet header of given type.
  * 1. you MUST fill th->datalength and th->version

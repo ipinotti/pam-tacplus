@@ -20,6 +20,7 @@
  */
 #include <stdlib.h>
 #include <stdio.h>
+#include <errno.h>
 #include <syslog.h>
 #include <stdarg.h>
 
@@ -52,8 +53,12 @@
 #include "tacplus.h"
 #include "libtac.h"
 
+#ifdef CONFIG_PD3
+static char conf_file[BUFFER_SIZE];	/* configuration file */
+#else
 unsigned long tac_srv[TAC_MAX_SERVERS];
 int tac_srv_no = 0;
+#endif
 char *tac_service = NULL;
 char *tac_protocol = NULL;
 char *tac_prompt = NULL;
@@ -197,8 +202,12 @@ unsigned long _resolve_name (const char *serv) {
 int _pam_parse (int argc, const char **argv) {
 	int ctrl = 0;
 
-	/* otherwise the list will grow with each call */
-	tac_srv_no = 0;
+#ifdef CONFIG_PD3
+        strcpy(conf_file, TACPLUS_CONF_FILE);
+#else
+        /* otherwise the list will grow with each call */
+        tac_srv_no = 0;
+#endif
 
 	for (ctrl = 0; argc-- > 0; ++argv) {
 		if (!strcmp (*argv, "debug")) { /* all */
@@ -226,6 +235,10 @@ int _pam_parse (int argc, const char **argv) {
 			}
 		} else if (!strcmp (*argv, "acct_all")) {
 			ctrl |= PAM_TAC_ACCT;
+#ifdef CONFIG_PD3
+		} else if (!strncmp(*argv, "conf=", 5)) {
+                        strcpy(conf_file, *argv + 5);
+#else
 		} else if (!strncmp (*argv, "server=", 7)) { /* authen & acct */
 			unsigned long addr = 0;
 			if(tac_srv_no < TAC_MAX_SERVERS) { 
@@ -247,6 +260,7 @@ int _pam_parse (int argc, const char **argv) {
 			strcpy (tac_secret, *argv + 7);
 		} else if (!strncmp (*argv, "timeout=", 8)) {
 			tac_timeout = atoi(*argv + 8);
+#endif
 		} else if (!strncmp (*argv, "login=", 6)) {
 			tac_login = (char *) _xcalloc (strlen (*argv + 6) + 1);
 			strcpy (tac_login, *argv + 6);
@@ -258,3 +272,123 @@ int _pam_parse (int argc, const char **argv) {
 	return ctrl;
 }	/* _pam_parse */
 
+#ifdef CONFIG_PD3
+#ifndef _pam_forget
+#define _pam_forget(X) if (X) {memset(X, 0, strlen(X));free(X);X = NULL;}
+#endif
+#ifndef _pam_drop
+#define _pam_drop(X) if (X) {free(X);X = NULL;}
+#endif
+void cleanup(tacacs_server_t **server)
+{
+	tacacs_server_t *next;
+
+	while (*server) {
+		next = (*server)->next;
+		_pam_drop((*server)->hostname);
+		_pam_forget((*server)->secret);
+		_pam_drop(*server);
+		*server = next;
+	}
+}
+
+int initialize(tacacs_server_t **conf)
+{
+	char hostname[BUFFER_SIZE];
+	char secret[BUFFER_SIZE];
+	char buffer[BUFFER_SIZE];
+	char *p;
+	FILE *fserver;
+	tacacs_server_t *server = NULL;
+	int timeout;
+	int line = 0;
+#if 0
+	int ctrl = 1;		/* for DPRINT */
+#else
+	int ctrl = 0;		/* for DPRINT */
+#endif
+
+	/* the first time around, read the configuration file */
+	strcpy(conf_file, TACPLUS_CONF_FILE);
+	if ((fserver = fopen(conf_file, "r")) == (FILE *) NULL) {
+		printf("Could not fopen\n");
+		_pam_log(LOG_ERR, "Could not open configuration file %s: %s\n",
+			 conf_file, strerror(errno));
+		return PAM_ABORT;
+	}
+
+	while (!feof(fserver) &&
+	       (fgets(buffer, sizeof (buffer), fserver) != (char *) NULL) &&
+	       (!ferror(fserver))) {
+		line++;
+		p = buffer;
+
+		/*
+		 *  Skip blank lines and whitespace
+		 */
+		while (*p &&
+		       ((*p == ' ') || (*p == '\t') ||
+			(*p == '\r') || (*p == '\n')))
+			p++;
+
+		/*
+		 *  Nothing, or just a comment.  Ignore the line.
+		 */
+		if ((!*p) || (*p == '#'))
+			continue;
+
+		timeout = 1;
+#define SECRET_OPTIONAL		/* optional key for tac-server */
+#ifdef SECRET_OPTIONAL
+		secret[0] = 0;	/* if missing secret, use zero sized one! */
+		if (sscanf(p, "%s %s %d", hostname, secret, &timeout) < 1) {
+			_pam_log(LOG_ERR,
+				 "ERROR reading %s, line %d: Could not read hostname\n",
+#else
+		if (sscanf(p, "%s %s %d", hostname, secret, &timeout) < 2) {
+			_pam_log(LOG_ERR,
+				 "ERROR reading %s, line %d: Could not read hostname or secret\n",
+#endif
+				 conf_file, line);
+			continue;	/* invalid line */
+		} else {	/* read it in and save the data */
+			tacacs_server_t *tmp;
+
+			tmp = malloc(sizeof (tacacs_server_t));
+			if (server) {
+				server->next = tmp;
+				server = server->next;
+			} else {
+				*conf = tmp;	/* first server */
+				server = tmp;	/* first time */
+			}
+
+			/* sometime later do memory checks here */
+			server->hostname = strdup(hostname);
+			server->secret = strdup(secret);
+			if (inet_aton(server->hostname, &server->ip) <= 0) {
+				_pam_log(LOG_ERR,
+					 "DEBUG: invalid ip %s address.\n",
+					 server->hostname);
+			}
+
+			if ((timeout < 1) || (timeout > 60)) {
+				server->timeout = 1;
+			} else {
+				server->timeout = timeout;
+			}
+			server->next = NULL;
+		}
+	}
+	fclose(fserver);
+
+	if (!server) {		/* no server found, die a horrible death */
+		if (ctrl & PAM_TAC_DEBUG)
+			_pam_log(LOG_ERR,
+				 "No TACACS server found in configuration file %s\n",
+				 conf_file);
+		return PAM_AUTHINFO_UNAVAIL;
+	}
+	return PAM_SUCCESS;
+}
+#endif

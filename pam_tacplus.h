@@ -36,3 +36,22 @@
 #ifndef PAM_EXTERN
 	#define PAM_EXTERN extern
 #endif
+
+#define CONFIG_PD3
+#ifdef CONFIG_PD3
+
+#define USE_CONF_FILE
+#define BUFFER_SIZE 1024
+
+#ifndef TACPLUS_CONF_FILE       /* the configuration file holding the server/secret/timeout */
+#define TACPLUS_CONF_FILE       "/etc/tacdb/server"
+#endif /* CONF_FILE */
+
+typedef struct tacacs_server_t {
+  struct tacacs_server_t *next;
+  struct in_addr ip;
+  char *hostname;
+  char *secret;
+  int timeout;
+} tacacs_server_t;
+#endif /* CONFIG_PD3 */
