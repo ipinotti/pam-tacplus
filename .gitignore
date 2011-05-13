@@ -9,5 +9,10 @@ autom4te.cache/
 .*
 *.Plo
 .*
-
-
+Makefile
+config.h
+config.log
+config.status
+libtool
+pam_tacplus.spec
+stamp-h1
