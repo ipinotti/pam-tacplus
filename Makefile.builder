@@ -17,4 +17,8 @@ install:
 clean:
 	$(MAKE) clean
 
-distclean: clean
+distclean:
+	if [ -f Makefile ]; then \
+		$(MAKE) distclean; \
+	fi
+

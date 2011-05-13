@@ -1,2 +1,0 @@
-pam_tacplus_la-messages.lo pam_tacplus_la-messages.o:  \
- libtac/lib/messages.c
