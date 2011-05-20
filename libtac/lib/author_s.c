@@ -72,7 +72,7 @@ int tac_author_send(int fd, const char *user, char *tty, struct tac_attrib *attr
 	} else {
 		tb.authen_type=TAC_PLUS_AUTHEN_TYPE_PAP;
 	}
-	tb.service=TAC_PLUS_AUTHEN_SVC_PPP;
+	tb.service=TAC_PLUS_AUTHEN_SVC_LOGIN;
 	tb.user_len=user_len;
 	tb.port_len=port_len;
 	tb.rem_addr_len=0;
@@ -141,7 +141,9 @@ int tac_author_send(int fd, const char *user, char *tty, struct tac_attrib *attr
 		syslog(LOG_ERR, "%s: author hdr send failed: wrote %d of %d", 
 				__FUNCTION__, w,
 				TAC_PLUS_HDR_SIZE);
-		ret = -1;
+		free(pkt);
+		free(th);
+		return -1;
 	}
 	
 	/* encrypt packet body  */

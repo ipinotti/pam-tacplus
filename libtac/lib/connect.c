@@ -49,7 +49,11 @@ int tac_timeout = 5;
    to the first available server from list passed
    in server table.
 */
+#ifdef CONFIG_PD3
+int tac_connect(u_long *server, int *timeout, int servers) {
+#else
 int tac_connect(u_long *server, int servers) {
+#endif
 	struct sockaddr_in serv_addr;
 	struct servent *s;
 	int tries = 0;
@@ -91,9 +95,10 @@ int tac_connect(u_long *server, int servers) {
 			continue;
 		}
 
+
 		retval = connect(fd, (struct sockaddr *) &serv_addr, sizeof(serv_addr));
 		if((retval < 0) && (errno != EINPROGRESS)) {
-     	  		syslog(LOG_WARNING, 
+		  	syslog(LOG_WARNING,
 				"%s: connection to %s failed: %m", __FUNCTION__,
 						inet_ntoa(serv_addr.sin_addr));
 			if(fcntl(fd, F_SETFL, flags)) {
@@ -109,8 +114,16 @@ int tac_connect(u_long *server, int servers) {
 		FD_SET(fd, &readfds);
 		writefds = readfds;
 
+#ifdef CONFIG_PD3
+		/* set timeout seconds */
+		if ((timeout[tries] > 0) && (timeout[tries] < 60))
+			tv.tv_sec = timeout[tries];
+		else
+			tv.tv_sec = tac_timeout;
+#else
 		/* set timeout seconds */
 		tv.tv_sec = tac_timeout;
+#endif
 		tv.tv_usec = 0;
 
 		/* check if socket is ready for read or write */
@@ -127,10 +140,10 @@ int tac_connect(u_long *server, int servers) {
 		}
 
 		/* connected ok */
-		if(fcntl(fd, F_SETFL, flags)) {
-     	  		syslog(LOG_WARNING, "%s: cannot restore socket flags",
-				 __FUNCTION__); 
+		if (fcntl(fd, F_SETFL, flags)) {
+			syslog(LOG_WARNING, "%s: cannot restore socket flags", __FUNCTION__);
 		}
+
 		TACDEBUG((LOG_DEBUG, "%s: connected to %s", __FUNCTION__, \
 			       	inet_ntoa(serv_addr.sin_addr)));
 
@@ -143,7 +156,12 @@ int tac_connect(u_long *server, int servers) {
 
 } /* tac_connect */
 
-
+#ifdef CONFIG_PD3
+int tac_connect_single(u_long server, int timeout) {
+	return(tac_connect(&server, &timeout, 1));
+} /* tac_connect_single */
+#else
 int tac_connect_single(u_long server) {
 	return(tac_connect(&server, 1));
 } /* tac_connect_single */
+#endif

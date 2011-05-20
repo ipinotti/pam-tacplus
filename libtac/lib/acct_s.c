@@ -139,7 +139,9 @@ int tac_account_send(int fd, int type, const char *user, char *tty,
 		syslog(LOG_ERR, "%s: acct hdr send failed: wrote %d of %d",
 				__FUNCTION__, w,
 				TAC_PLUS_HDR_SIZE);
-		ret = -1;
+		free(pkt);
+		free(th);
+		return -1;
 	}
 	
 	/* encrypt packet body  */

@@ -19,6 +19,10 @@
  * See `CHANGES' file for revision history.
  */
 
+#ifndef CONFIG_PD3
+#define CONFIG_PD3
+#endif
+
 /* pam_tacplus command line options */
 #define PAM_TAC_DEBUG		01
 #define PAM_TAC_ENCRYPT		02
@@ -34,12 +38,11 @@
 #define PAM_TAC_VPAT		2
 
 #ifndef PAM_EXTERN
-	#define PAM_EXTERN extern
+#define PAM_EXTERN extern
 #endif
 
-#define CONFIG_PD3
-#ifdef CONFIG_PD3
 
+#ifdef CONFIG_PD3
 #define USE_CONF_FILE
 #define BUFFER_SIZE 1024
 

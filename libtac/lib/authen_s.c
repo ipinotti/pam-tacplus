@@ -114,7 +114,8 @@ int tac_authen_send(int fd, const char *user, char *pass, char *tty)
 	if(w < 0 || w < TAC_PLUS_HDR_SIZE) {
 		syslog(LOG_ERR, "%s: short write on header: wrote %d of %d: %m", 
 						__FUNCTION__, w, TAC_PLUS_HDR_SIZE);
-		ret=-1;
+		free(th);
+		return -1;
 	}
 
  	/* build the packet */
@@ -146,8 +147,8 @@ int tac_authen_send(int fd, const char *user, char *pass, char *tty)
 		ret=-1;
 	}
 
- 	free(pkt);
- 	free(th);
+	free(pkt);
+	free(th);
 
- 	return(ret);
+	return(ret);
 } /* tac_authen_send */
