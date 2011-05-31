@@ -179,15 +179,17 @@ int _pam_send_account(int tac_fd, int type, const char *user, char *tty)
 #ifdef CONFIG_PD3
 	/* If we have no service configured, put shell as default */
 	if (tac_service != NULL) {
-		if (!strcmp(tac_service, "shell")||!strcmp(tac_service,"ppp"))
+		if (!strcmp(tac_service, "shell") || !strcmp(tac_service, "ppp"))
 			tac_add_attrib(&attr, "service", tac_service);
 		else
 			tac_add_attrib(&attr, "service", "shell");
 	} else
 		tac_add_attrib(&attr, "service", "shell");
-	 /* Do not add protocol if service is not PPP  */
+
+	/* Do not add protocol if service is not PPP  */
 	if (!strcmp(tac_service, "ppp"))
 		tac_add_attrib(&attr, "protocol", tac_protocol);
+
 	/* Command log */
 	if (cmd != NULL) {
 		sprintf(buf, "%d", priv_lvl);
@@ -238,7 +240,7 @@ int _pam_account(pam_handle_t *pamh, int argc, const char **argv, int type)
 	char *typemsg;
 	int status = PAM_SESSION_ERR;
 #ifdef CONFIG_PD3
-	char *tac_cmd;
+	char *tac_cmd = NULL;
 #endif
 
 	typemsg = (type == TAC_PLUS_ACCT_FLAG_START) ? "START" : "STOP";
@@ -351,9 +353,11 @@ int _pam_account(pam_handle_t *pamh, int argc, const char **argv, int type)
 			syslog(LOG_DEBUG, "%s: connected with fd=%d", __FUNCTION__, tac_fd);
 
 #ifdef CONFIG_PD3
-		retval = pam_get_item(pamh, PAM_RHOST, (const void **) (const void *) &tac_cmd);
-		if (retval != PAM_SUCCESS)
-			_pam_log(LOG_ERR, "unable to obtain cmd\n");
+		if (ctrl & PAM_TAC_CMD_ACCT) {
+			retval = pam_get_item(pamh, PAM_USER_PROMPT, (const void **) (const void *) &tac_cmd);
+			if (retval != PAM_SUCCESS)
+				_pam_log(LOG_ERR, "unable to obtain cmd\n");
+		}
 
 		retval = _pam_send_account(tac_fd, type, user, tty, tac_cmd, 0);
 #else
@@ -675,7 +679,7 @@ int pam_sm_acct_mgmt(pam_handle_t * pamh, int flags, int argc, const char **argv
 	char *rhostname;
 	u_long rhost = 0;
 #ifdef CONFIG_PD3
-	char *tac_cmd;
+	char *tac_cmd = NULL;
 	tacacs_server_t *srv_i;
 	u_long tac_servers[TAC_MAX_SERVERS];
 	int tac_timeout[TAC_MAX_SERVERS];
@@ -734,9 +738,11 @@ int pam_sm_acct_mgmt(pam_handle_t * pamh, int flags, int argc, const char **argv
 	if (!active_server)
 		_get_config((char *)user);
 
-	retval = pam_get_item(pamh, PAM_RHOST, (const void **) (const void *) &tac_cmd);
-	if (retval != PAM_SUCCESS)
-		_pam_log(LOG_ERR, "unable to obtain cmd\n");
+	if (ctrl & PAM_TAC_CMD_AUTHOR) {
+		retval = pam_get_item(pamh, PAM_USER_PROMPT, (const void **) (const void *) &tac_cmd);
+		if (retval != PAM_SUCCESS)
+			_pam_log(LOG_ERR, "unable to obtain cmd\n");
+	}
 #else
 	/* checks if user has been successfully authenticated
 	 by TACACS+; we cannot solely authorize user if it hasn't

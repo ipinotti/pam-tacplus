@@ -24,10 +24,12 @@
 #endif
 
 /* pam_tacplus command line options */
-#define PAM_TAC_DEBUG		01
-#define PAM_TAC_ENCRYPT		02
-#define PAM_TAC_FIRSTHIT	04
-#define PAM_TAC_ACCT		10 /* account on all specified servers */
+#define PAM_TAC_DEBUG		0x01
+#define PAM_TAC_ENCRYPT		0x02
+#define PAM_TAC_FIRSTHIT	0x04
+#define PAM_TAC_ACCT		0x10 /* account on all specified servers */
+#define PAM_TAC_CMD_ACCT	0x20
+#define PAM_TAC_CMD_AUTHOR	0x40
 
 /* how many TACPLUS+ servers can be defined */
 #define TAC_MAX_SERVERS		4

@@ -236,6 +236,10 @@ int _pam_parse (int argc, const char **argv) {
 		} else if (!strcmp (*argv, "acct_all")) {
 			ctrl |= PAM_TAC_ACCT;
 #ifdef CONFIG_PD3
+		} else if (!strcmp(*argv, "cmd_acct")) {
+			ctrl |= PAM_TAC_CMD_ACCT;
+		} else if (!strcmp(*argv, "cmd_author")) {
+			ctrl |= PAM_TAC_CMD_AUTHOR;
 		} else if (!strncmp(*argv, "conf=", 5)) {
                         strcpy(conf_file, *argv + 5);
 #else
