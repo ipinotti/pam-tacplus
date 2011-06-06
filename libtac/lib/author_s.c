@@ -72,7 +72,12 @@ int tac_author_send(int fd, const char *user, char *tty, struct tac_attrib *attr
 	} else {
 		tb.authen_type=TAC_PLUS_AUTHEN_TYPE_PAP;
 	}
-	tb.service=TAC_PLUS_AUTHEN_SVC_LOGIN;
+
+	if (!strcmp(user, "$enable$"))
+		tb.service=TAC_PLUS_AUTHEN_SVC_NONE;
+	else
+		tb.service=TAC_PLUS_AUTHEN_SVC_LOGIN;
+
 	tb.user_len=user_len;
 	tb.port_len=port_len;
 	tb.rem_addr_len=0;

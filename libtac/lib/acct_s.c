@@ -71,7 +71,7 @@ int tac_account_send(int fd, int type, const char *user, char *tty,
 	} else {
 		tb.authen_type=TAC_PLUS_AUTHEN_TYPE_PAP;
 	}
-	tb.authen_service=TAC_PLUS_AUTHEN_SVC_PPP;
+	tb.authen_service=TAC_PLUS_AUTHEN_SVC_LOGIN;
 	tb.user_len=user_len;
 	tb.port_len=port_len;
 	tb.rem_addr_len=0;

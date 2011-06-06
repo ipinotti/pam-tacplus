@@ -112,6 +112,7 @@ struct authen_start {
 
     u_char service;
 
+#define TAC_PLUS_AUTHEN_SVC_NONE   0
 #define TAC_PLUS_AUTHEN_SVC_LOGIN  1
 #define TAC_PLUS_AUTHEN_SVC_ENABLE 2
 #define TAC_PLUS_AUTHEN_SVC_PPP    3

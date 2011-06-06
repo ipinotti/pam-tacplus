@@ -97,7 +97,12 @@ int tac_authen_send(int fd, const char *user, char *pass, char *tty)
 	} else {
 		tb.authen_type=TAC_PLUS_AUTHEN_TYPE_PAP;
 	}
- 	tb.service=TAC_PLUS_AUTHEN_SVC_PPP;
+
+	if (!strcmp(user, "$enable$"))
+		tb.service=TAC_PLUS_AUTHEN_SVC_ENABLE;
+	else
+		tb.service=TAC_PLUS_AUTHEN_SVC_LOGIN;
+
  	tb.user_len=user_len;
  	tb.port_len=port_len;
  	tb.rem_addr_len=0;          /* may be e.g Caller-ID in future */
