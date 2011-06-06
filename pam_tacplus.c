@@ -807,12 +807,12 @@ int pam_sm_acct_mgmt(pam_handle_t * pamh, int flags, int argc, const char **argv
 			tac_servers[i] = srv_i->ip.s_addr;
 			tac_timeout[i] = srv_i->timeout;
 		}
-
 		tac_fd = tac_connect(tac_servers, tac_timeout, i);
-	}
 #else
 	tac_fd = tac_connect_single(active_server);
 #endif
+	} else
+		tac_fd = tac_connect_single(active_server, 3); /* FIXME Timeout hardcoded */
 
 
 	if (tac_fd < 0) {
