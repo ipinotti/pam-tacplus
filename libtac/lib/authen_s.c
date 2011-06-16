@@ -46,6 +46,8 @@ int tac_authen_send(int fd, const char *user, char *pass, char *tty)
 	u_char *pkt;
 	int ret = 0;
 
+	session_id = 0; /* Grant us a new session ID */
+
 	th = _tac_req_header(TAC_PLUS_AUTHEN);
 
 	/* set some header options */

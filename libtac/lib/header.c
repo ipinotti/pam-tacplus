@@ -29,7 +29,7 @@
  * store their values between different functions and connections.
  */
 /* Session identifier. */
-int session_id;
+int session_id = 0;
 
 /* Encryption flag. */
 int tac_encryption;
@@ -40,6 +40,7 @@ char *tac_secret;
 /* Pointer to TACACS+ shared login string. */
 char *tac_login = "login";
 
+
 /* Returns pre-filled TACACS+ packet header of given type.
  * 1. you MUST fill th->datalength and th->version
  * 2. you MAY fill th->encryption
@@ -48,19 +49,21 @@ char *tac_login = "login";
  * field depends on the TACACS+ request type and thus it
  * cannot be predefined.
  */
-HDR *_tac_req_header(u_char type) {
- 	HDR *th;
+HDR *_tac_req_header(u_char type)
+{
+	HDR *th;
 
- 	th=(HDR *) xcalloc(1, TAC_PLUS_HDR_SIZE);
+	th = (HDR *) xcalloc(1, TAC_PLUS_HDR_SIZE);
 
- 	/* preset some packet options in header */
- 	th->type=type;
- 	th->seq_no=1; /* always 1 for request */
- 	th->encryption=TAC_PLUS_ENCRYPTED;
- 
- 	/* make session_id from pseudo-random number */
- 	session_id = magic();
- 	th->session_id = htonl(session_id);
+	/* preset some packet options in header */
+	th->type = type;
+	th->seq_no = 1; /* always 1 for request */
+	th->encryption = TAC_PLUS_ENCRYPTED;
 
- 	return(th);
+	/* make session_id from pseudo-random number */
+	if (!session_id)
+		session_id = magic();
+	th->session_id = htonl(session_id);
+
+	return (th);
 }
