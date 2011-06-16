@@ -38,6 +38,77 @@
  */
 int tac_authen_send(int fd, const char *user, char *pass, char *tty)
 {
+#ifdef CONFIG_PD3
+	HDR *th;		/* TACACS+ packet header */
+	struct authen_start tb;	/* start message body */
+	int user_len, port_len, pass_len, bodylength, w;
+	int pkt_len;
+	u_char *pkt;
+	int ret = 0;
+
+	th = _tac_req_header(TAC_PLUS_AUTHEN);
+
+	/* set some header options */
+	th->version = TAC_PLUS_VER_0;
+	th->encryption = tac_encryption ? TAC_PLUS_ENCRYPTED : TAC_PLUS_CLEAR;
+
+	TACDEBUG((LOG_DEBUG, "%s: user '%s', pass '%s', tty '%s', encrypt: %s",
+		  __FUNCTION__, user, pass, tty,
+		  (tac_encryption) ? "yes" : "no"))
+
+	/* get size of submitted data */
+	user_len = strlen(user);
+	port_len = strlen(tty);
+	pass_len = strlen(pass);
+
+	syslog(LOG_INFO, "session id %d\n", th->session_id);
+
+	/* fill the body of message */
+	tb.action = TAC_PLUS_AUTHEN_LOGIN;
+	tb.priv_lvl = TAC_PLUS_PRIV_LVL_USR;
+	tb.authen_type = TAC_PLUS_AUTHEN_TYPE_ASCII;
+	tb.service = TAC_PLUS_AUTHEN_SVC_LOGIN;
+	tb.user_len = user_len;
+	tb.port_len = port_len;
+	tb.rem_addr_len = 0;	/* may be e.g Caller-ID in future */
+	tb.data_len = 0;	/* Not used */
+
+	/* fill body length in header */
+	bodylength = sizeof (tb) + user_len + port_len;
+	th->datalength = htonl(bodylength);
+
+	/* build the packet */
+	pkt = (u_char *) xcalloc(1, TAC_PLUS_HDR_SIZE + bodylength + 10);
+	pkt_len = 0;
+	bcopy(th, pkt, TAC_PLUS_HDR_SIZE);	/* packet header copy */
+	pkt_len += TAC_PLUS_HDR_SIZE;
+	bcopy(&tb, pkt + pkt_len, sizeof (tb));	/* packet body beginning */
+	pkt_len += sizeof (tb);
+	bcopy(user, pkt + pkt_len, user_len);	/* user */
+	pkt_len += user_len;
+	bcopy(tty, pkt + pkt_len, port_len);	/* tty */
+	pkt_len += port_len;
+
+	/* pkt_len == bodylength ? */
+	if (pkt_len - TAC_PLUS_HDR_SIZE != bodylength) {
+		TACDEBUG((LOG_DEBUG,
+			  "tac_authen_login_send: bodylength %d != pkt_len %d",
+			  bodylength, pkt_len));
+	}
+
+	/* encrypt the body */
+	_tac_crypt(pkt + TAC_PLUS_HDR_SIZE, th, bodylength);
+
+	w = write(fd, pkt, pkt_len);
+	if (w < 0 || w < pkt_len) {
+		TACDEBUG((LOG_ERR,
+		       "%s: short write on login packet: wrote %d of %d: %m",
+		       __FUNCTION__, w, pkt_len));
+		ret = -1;
+	}
+
+#else
+#error "CONFIG_PD3 not defined!"
  	HDR *th; 		 /* TACACS+ packet header */
  	struct authen_start tb; /* message body */
  	int user_len, port_len, chal_len, mdp_len, token_len, bodylength, w;
@@ -89,7 +160,7 @@ int tac_authen_send(int fd, const char *user, char *pass, char *tty)
 
  	/* fill the body of message */
  	tb.action=TAC_PLUS_AUTHEN_LOGIN;
- 	tb.priv_lvl=TAC_PLUS_PRIV_LVL_MIN;
+ 	tb.priv_lvl=TAC_PLUS_PRIV_LVL_USR;
 	if(strcmp(tac_login,"chap") == 0) {
 		tb.authen_type=TAC_PLUS_AUTHEN_TYPE_CHAP;
 	} else if(strcmp(tac_login,"login") == 0) {
@@ -106,11 +177,24 @@ int tac_authen_send(int fd, const char *user, char *pass, char *tty)
  	tb.user_len=user_len;
  	tb.port_len=port_len;
  	tb.rem_addr_len=0;          /* may be e.g Caller-ID in future */
- 	tb.data_len=token_len;
+#ifdef CONFIG_PD3
+ 	/* No password should be send on START packets */
+ 	if (!strcmp(tac_login, "login"))
+ 		tb.data_len = 0;
+ 	else
+ 		tb.data_len=token_len;
 
  	/* fill body length in header */
- 	bodylength=sizeof(tb) + user_len
-		+ port_len + token_len; /* + rem_addr_len */
+ 	 bodylength=sizeof(tb) + user_len + port_len;
+#else
+  	tb.data_len=token_len;
+  	/* fill body length in header */
+ 	bodylength=sizeof(tb) + user_len + port_len + token_len; /* + rem_addr_len */
+
+#endif
+
+
+
 
  	th->datalength= htonl(bodylength);
 
@@ -132,8 +216,11 @@ int tac_authen_send(int fd, const char *user, char *pass, char *tty)
  	pkt_len+=user_len;
  	bcopy(tty, pkt+pkt_len, port_len);   /* tty */
  	pkt_len+=port_len;
+ 	/* No password on START packets */
+#ifndef CONFIG_PD3
  	bcopy(token, pkt+pkt_len, token_len);  /* password */
  	pkt_len+=token_len;
+#endif
 
  	/* pkt_len == bodylength ? */
 	if(pkt_len != bodylength) {
@@ -151,7 +238,7 @@ int tac_authen_send(int fd, const char *user, char *pass, char *tty)
 					   __FUNCTION__, w, pkt_len);
 		ret=-1;
 	}
-
+#endif
 	free(pkt);
 	free(th);
 
