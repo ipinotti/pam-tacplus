@@ -23,6 +23,7 @@
 #include <sys/types.h>
 #include <sys/time.h>
 #include <unistd.h>
+#include <syslog.h>
 
 /* u_int32_t support for sun */
 #ifdef sun
@@ -82,9 +83,12 @@ magic()
 	u_int32_t ret = 0;
 	int bytes = 0;
 
+	magic_init();
+
 	if(rfd) 
 	{
 		bytes = read(rfd, &ret, sizeof(ret));
+		close(rfd);
 		return(ret);
 	}
 	else
