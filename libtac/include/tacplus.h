@@ -101,6 +101,7 @@ struct authen_start {
     u_char priv_lvl;
 
 #define TAC_PLUS_PRIV_LVL_MIN 0x0
+#define TAC_PLUS_PRIV_LVL_USR 0x1
 #define TAC_PLUS_PRIV_LVL_MAX 0xf
 
     u_char authen_type;
@@ -144,7 +145,7 @@ struct authen_cont {
 
     /* <user_msg_len bytes of u_char data> */
     /* <user_data_len bytes of u_char data> */
-};
+} __attribute__ ((packed));
 
 #define TAC_AUTHEN_CONT_FIXED_FIELDS_SIZE 5
 
