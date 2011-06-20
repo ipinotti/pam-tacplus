@@ -24,11 +24,38 @@
 /* Define to 1 if you have the <inttypes.h> header file. */
 #undef HAVE_INTTYPES_H
 
+/* Define to 1 if you have the `crypt' library (-lcrypt). */
+#undef HAVE_LIBCRYPT
+
+/* Define to 1 if you have the `crypto' library (-lcrypto). */
+#undef HAVE_LIBCRYPTO
+
+/* Define to 1 if you have the `iptc' library (-liptc). */
+#undef HAVE_LIBIPTC
+
+/* Define to 1 if you have the `m' library (-lm). */
+#undef HAVE_LIBM
+
+/* Define to 1 if you have the `ncurses' library (-lncurses). */
+#undef HAVE_LIBNCURSES
+
+/* Define to 1 if you have the `netsnmp' library (-lnetsnmp). */
+#undef HAVE_LIBNETSNMP
+
 /* Define to 1 if you have the `pam' library (-lpam). */
 #undef HAVE_LIBPAM
 
+/* Define to 1 if you have the `pam_misc' library (-lpam_misc). */
+#undef HAVE_LIBPAM_MISC
+
+/* Define to 1 if you have the `router' library (-lrouter). */
+#undef HAVE_LIBROUTER
+
 /* Define to 1 if you have the `tac' library (-ltac). */
 #undef HAVE_LIBTAC
+
+/* Define to 1 if you have the `usb-1.0' library (-lusb-1.0). */
+#undef HAVE_LIBUSB_1_0
 
 /* Define to 1 if you have the <memory.h> header file. */
 #undef HAVE_MEMORY_H

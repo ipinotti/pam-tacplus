@@ -32,6 +32,15 @@ dnl --------------------------------------------------------------------
 dnl Checks for libraries.
 AC_CHECK_LIB(pam, pam_start)
 AC_CHECK_LIB(tac, tac_connect)
+AC_CHECK_LIB(m, log10,, exit)
+AC_CHECK_LIB(crypt, setkey,,exit)
+AC_CHECK_LIB(ncurses, tgetent,, exit)
+AC_CHECK_LIB(pam_misc, pam_misc_setenv,, exit)
+AC_CHECK_LIB(crypto, RSA_public_encrypt,, exit)
+AC_CHECK_LIB(iptc,iptc_init,, exit)
+AC_CHECK_LIB(netsnmp, snmpv3_store,, exit)
+AC_CHECK_LIB(usb-1.0, libusb_init,, exit)
+AC_CHECK_LIB(router, librouter_config_mmap_cfg,, exit)
 
 case "$host" in
 	sparc-* | sparc64-*)
