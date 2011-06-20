@@ -19,9 +19,6 @@
  * See `CHANGES' file for revision history.
  */
 
-#ifndef __linux__
-	#include <security/pam_appl.h>
-#endif
 #include <security/pam_modules.h>
 
 /* support.c */
@@ -36,6 +33,5 @@ extern void _pam_log (int err, const char *format,...);
 extern void *_xcalloc (size_t size);
 extern char *_pam_get_terminal(pam_handle_t *pamh);
 
-/* CONFIG_PD3 */
 extern void cleanup(tacacs_server_t **server);
 extern int initialize(tacacs_server_t **conf);

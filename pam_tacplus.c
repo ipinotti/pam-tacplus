@@ -46,6 +46,9 @@
 #include "pam_tacplus.h"
 #include "support.h"
 
+#include <librouter/args.h>
+#include <librouter/pam.h>
+
 #define PAM_SM_AUTH
 #define PAM_SM_ACCOUNT
 #define PAM_SM_SESSION
@@ -61,13 +64,7 @@
 #endif
 
 /* support.c */
-#ifdef CONFIG_PD3
 tacacs_server_t *tac_srv = NULL;
-#else
-extern u_long tac_srv[TAC_MAX_SERVERS];
-extern int tac_srv_no;
-#endif
-
 extern char *tac_service;
 extern char *tac_protocol;
 extern int _pam_parse(int argc, const char **argv);
@@ -86,16 +83,14 @@ extern int tac_encryption;
 
 /* address of server discovered by pam_sm_authenticate */
 static u_long active_server = 0;
-#ifdef CONFIG_PD3
 static int active_encryption = 0;
-#endif
 /* accounting task identifier */
 static short int task_id = 0;
 
-#ifdef CONFIG_PD3
 struct tacacs_data_t {
 	u_long active_server;
 	int active_encryption;
+	int active_timeout;
 };
 
 /**
@@ -151,14 +146,9 @@ int _set_config(char *username)
 
 	return 0;
 }
-#endif /* CONFIG_PD3 */
 
 /* Helper functions */
-#ifdef CONFIG_PD3
-int _pam_send_account(int tac_fd, int type, char *user, char *tty, char *cmd, int priv_lvl)
-#else
-int _pam_send_account(int tac_fd, int type, const char *user, char *tty)
-#endif
+int _pam_send_account(int tac_fd, int type, char *user, char *tty, char *cmd)
 {
 	char buf[40];
 	struct tac_attrib *attr;
@@ -166,17 +156,12 @@ int _pam_send_account(int tac_fd, int type, const char *user, char *tty)
 
 	attr = (struct tac_attrib *) _xcalloc(sizeof(struct tac_attrib));
 
-#ifdef _AIX
-	sprintf(buf, "%d", time(0));
-#else
 	sprintf(buf, "%lu", (long unsigned int) time(0));
-#endif
 
 	tac_add_attrib(&attr, (type == TAC_PLUS_ACCT_FLAG_START) ? "start_time" : "stop_time", buf);
 	sprintf(buf, "%hu", task_id);
 	tac_add_attrib(&attr, "task_id", buf);
 
-#ifdef CONFIG_PD3
 	/* If we have no service configured, put shell as default */
 	if (tac_service != NULL) {
 		if (!strcmp(tac_service, "shell") || !strcmp(tac_service, "ppp"))
@@ -192,15 +177,10 @@ int _pam_send_account(int tac_fd, int type, const char *user, char *tty)
 
 	/* Command log */
 	if (cmd != NULL) {
-		sprintf(buf, "%d", priv_lvl);
+		sprintf(buf, "%d", librouter_pam_get_privilege());
 		tac_add_attrib(&attr, "priv-lvl", buf);
 		tac_add_attrib(&attr, "cmd", cmd);
-
 	}
-#else
-	tac_add_attrib(&attr, "service", tac_service);
-	tac_add_attrib(&attr, "protocol", tac_protocol);
-#endif
 
 	retval = tac_account_send(tac_fd, type, user, tty, attr);
 
@@ -239,9 +219,8 @@ int _pam_account(pam_handle_t *pamh, int argc, const char **argv, int type)
 	char *tty = NULL;
 	char *typemsg;
 	int status = PAM_SESSION_ERR;
-#ifdef CONFIG_PD3
 	char *tac_cmd = NULL;
-#endif
+
 
 	typemsg = (type == TAC_PLUS_ACCT_FLAG_START) ? "START" : "STOP";
 	ctrl = _pam_parse(argc, argv);
@@ -249,11 +228,6 @@ int _pam_account(pam_handle_t *pamh, int argc, const char **argv, int type)
 	if (ctrl & PAM_TAC_DEBUG)
 		syslog(LOG_DEBUG, "%s: [%s] called (pam_tacplus v%hu.%hu.%hu)", __FUNCTION__,
 		                typemsg, PAM_TAC_VMAJ, PAM_TAC_VMIN, PAM_TAC_VPAT);
-#ifndef CONFIG_PD3
-	if (ctrl & PAM_TAC_DEBUG)
-	syslog(LOG_DEBUG, "%s: tac_srv_no=%d", __FUNCTION__, tac_srv_no);
-#endif
-
 #if (defined(__linux__) || defined(__NetBSD__))
 	retval = pam_get_item(pamh, PAM_USER, (const void **) (const void*) &user);
 #else
@@ -267,7 +241,6 @@ int _pam_account(pam_handle_t *pamh, int argc, const char **argv, int type)
 	if (ctrl & PAM_TAC_DEBUG)
 		syslog(LOG_DEBUG, "%s: username [%s] obtained", __FUNCTION__, user);
 
-#ifdef CONFIG_PD3
 
 	if (!tac_srv) {
 		retval = initialize(&tac_srv);
@@ -277,7 +250,6 @@ int _pam_account(pam_handle_t *pamh, int argc, const char **argv, int type)
 
 	if (!active_server)
 		_get_config((char *)user);
-#endif
 
 	tty = _pam_get_terminal(pamh);
 
@@ -294,13 +266,6 @@ int _pam_account(pam_handle_t *pamh, int argc, const char **argv, int type)
 		return PAM_AUTH_ERR;
 	}
 
-	/* Protocol is not mandatory! What have this guy been drinking ?*/
-#ifndef CONFIG_PD3
-	if (tac_protocol == NULL || *tac_protocol == '\0') {
-		_pam_log(LOG_ERR, "TACACS+ protocol type not configured");
-		return PAM_AUTH_ERR;
-	}
-#endif
 
 	/* when this module is called from within pppd or other
 	 application dealing with serial lines, it is likely
@@ -316,7 +281,6 @@ int _pam_account(pam_handle_t *pamh, int argc, const char **argv, int type)
 	if (!(ctrl & PAM_TAC_ACCT)) {
 		/* normal mode, send packet to the first available server */
 		int tac_fd;
-#ifdef CONFIG_PD3
 		int i;
 		tacacs_server_t *srv_i;
 		u_long tac_servers[TAC_MAX_SERVERS];
@@ -338,11 +302,6 @@ int _pam_account(pam_handle_t *pamh, int argc, const char **argv, int type)
 			tac_timeout[i] = srv_i->timeout;
 		}
 		tac_fd = tac_connect(tac_servers, tac_timeout, i);
-#else
-		status = PAM_SUCCESS;
-
-		tac_fd = tac_connect(tac_srv, tac_srv_no);
-#endif
 
 		if (tac_fd < 0) {
 			_pam_log(LOG_ERR, "%s: error sending %s - no servers", __FUNCTION__,
@@ -352,17 +311,14 @@ int _pam_account(pam_handle_t *pamh, int argc, const char **argv, int type)
 		if (ctrl & PAM_TAC_DEBUG)
 			syslog(LOG_DEBUG, "%s: connected with fd=%d", __FUNCTION__, tac_fd);
 
-#ifdef CONFIG_PD3
 		if (ctrl & PAM_TAC_CMD_ACCT) {
 			retval = pam_get_item(pamh, PAM_USER_PROMPT, (const void **) (const void *) &tac_cmd);
 			if (retval != PAM_SUCCESS)
 				_pam_log(LOG_ERR, "unable to obtain cmd\n");
 		}
 
-		retval = _pam_send_account(tac_fd, type, user, tty, tac_cmd, 0);
-#else
-		retval = _pam_send_account(tac_fd, type, user, tty);
-#endif
+		retval = _pam_send_account(tac_fd, type, user, tty, tac_cmd);
+
 		if (retval < 0) {
 			_pam_log(LOG_ERR, "%s: error sending %s", __FUNCTION__, typemsg);
 			status = PAM_SESSION_ERR;
@@ -375,22 +331,13 @@ int _pam_account(pam_handle_t *pamh, int argc, const char **argv, int type)
 		}
 	} else {
 		/* send packet to all servers specified */
-#ifdef CONFIG_PD3
 		tacacs_server_t *srv_i;
-#else
-		int srv_i;
-#endif
 
 		status = PAM_SESSION_ERR;
 
-#ifdef CONFIG_PD3
 		for (srv_i = tac_srv; srv_i; srv_i = srv_i->next) {
-#else
-			for (srv_i = 0; srv_i < tac_srv_no; srv_i++) {
-#endif
 			int tac_fd;
 
-#ifdef CONFIG_PD3
 			if (tac_secret)
 				free(tac_secret);
 			tac_secret = (char *) _xcalloc(strlen(srv_i->secret) + 1);
@@ -400,9 +347,6 @@ int _pam_account(pam_handle_t *pamh, int argc, const char **argv, int type)
 			else
 				tac_encryption = 0;
 			tac_fd = tac_connect_single(srv_i->ip.s_addr, srv_i->timeout);
-#else
-			tac_fd = tac_connect_single(tac_srv[srv_i]);
-#endif
 			if (tac_fd < 0) {
 				_pam_log(LOG_WARNING, "%s: error sending %s (fd)", __FUNCTION__,
 				                typemsg);
@@ -410,25 +354,15 @@ int _pam_account(pam_handle_t *pamh, int argc, const char **argv, int type)
 			}
 
 			if (ctrl & PAM_TAC_DEBUG)
-#ifdef CONFIG_PD3
 				syslog(LOG_DEBUG,
 				       "%s: connected with fd=%d (srv %s)",
 				       __FUNCTION__, tac_fd, srv_i->hostname);
-#else
-				syslog(LOG_DEBUG, "%s: connected with fd=%d (srv %d)",
-				                __FUNCTION__, tac_fd, srv_i);
-#endif
-
-#ifdef CONFIG_PD3
 			retval = pam_get_item(pamh, PAM_RHOST,
 			                (const void **) (const void *) &tac_cmd);
 			if (retval != PAM_SUCCESS)
 				_pam_log(LOG_ERR, "unable to obtain cmd\n");
 
-			retval = _pam_send_account(tac_fd, type, user, tty, tac_cmd, 0);
-#else
-			retval = _pam_send_account(tac_fd, type, user, tty);
-#endif
+			retval = _pam_send_account(tac_fd, type, user, tty, tac_cmd);
 			/* return code from function in this mode is
 			 status of the last server we tried to send
 			 packet to */
@@ -451,9 +385,7 @@ int _pam_account(pam_handle_t *pamh, int argc, const char **argv, int type)
 		signal(SIGHUP, SIG_DFL);
 	}
 
-#ifdef CONFIG_PD3
 	cleanup(&tac_srv);
-#endif
 
 	return status;
 }
@@ -474,24 +406,20 @@ int pam_sm_authenticate(pam_handle_t * pamh, int flags, int argc, const char **a
 #endif
 	char *pass;
 	char *tty;
-#ifdef CONFIG_PD3
 	tacacs_server_t *srv_i;
-#else
-	int srv_i;
-#endif
 	int tac_fd;
 	int status = PAM_AUTH_ERR;
 
 	user = pass = tty = NULL;
 
 	ctrl = _pam_parse(argc, argv);
-#ifdef CONFIG_PD3
+
 	if (!tac_srv) {
 		retval = initialize(&tac_srv);
 		if (retval != PAM_SUCCESS)
 			return retval;
 	}
-#endif
+
 
 	if (ctrl & PAM_TAC_DEBUG)
 		syslog(LOG_DEBUG, "%s: called (pam_tacplus v%hu.%hu.%hu)", __FUNCTION__,
@@ -531,16 +459,10 @@ int pam_sm_authenticate(pam_handle_t * pamh, int flags, int argc, const char **a
 	if (ctrl & PAM_TAC_DEBUG)
 		syslog(LOG_DEBUG, "%s: tty [%s] obtained", __FUNCTION__, tty);
 
-#ifdef CONFIG_PD3
 	for (srv_i = tac_srv; srv_i; srv_i = srv_i->next) {
-#else
-	for (srv_i = 0; srv_i < tac_srv_no; srv_i++) {
-#endif
 		int msg = TAC_PLUS_AUTHEN_STATUS_FAIL;
 
-#ifdef CONFIG_PD3
-		//if (ctrl & PAM_TAC_DEBUG)
-			syslog(LOG_INFO, "%s: trying srv %s", __FUNCTION__, srv_i->hostname);
+		syslog(LOG_INFO, "TACACS+: trying authentication with %s", srv_i->hostname);
 
 		if (tac_secret)
 			free(tac_secret);
@@ -554,28 +476,14 @@ int pam_sm_authenticate(pam_handle_t * pamh, int flags, int argc, const char **a
 		tac_fd = tac_connect_single(srv_i->ip.s_addr, srv_i->timeout);
 
 		if (tac_fd < 0) {
-			_pam_log(LOG_ERR, "connection failed srv %s: %m", srv_i->hostname);
-			if (srv_i->next == NULL) /* XXX check if OK */
-			{ /* last server tried */
+			if (srv_i->next == NULL) {
+				/* last server tried */
 				_pam_log(LOG_ERR, "no more servers to connect");
 				return PAM_AUTHINFO_UNAVAIL;
+			} else {
+				continue; /* Try next server */
 			}
 		}
-
-#else
-		if (ctrl & PAM_TAC_DEBUG)
-		syslog(LOG_DEBUG, "%s: trying srv %d",
-				__FUNCTION__, srv_i);
-		tac_fd = tac_connect_single(tac_srv[srv_i], tac_timeout[srv_i]);
-
-		if (tac_fd < 0) {
-			_pam_log(LOG_ERR, "connection failed srv %d: %m", srv_i);
-			if (srv_i == tac_srv_no - 1) {
-				_pam_log(LOG_ERR, "no more servers to connect");
-				return PAM_AUTHINFO_UNAVAIL;
-			}
-		}
-#endif
 
 		if (tac_authen_send(tac_fd, user, pass, tty) < 0) {
 			_pam_log(LOG_ERR, "error sending auth req to TACACS+ server");
@@ -598,12 +506,8 @@ int pam_sm_authenticate(pam_handle_t * pamh, int flags, int argc, const char **a
 						/* OK, we got authenticated; save the server that
 						 accepted us for pam_sm_acct_mgmt and exit the loop */
 						status = PAM_SUCCESS;
-#ifdef CONFIG_PD3
 						active_server = srv_i->ip.s_addr;
 						active_encryption = tac_encryption;
-#else
-						active_server = tac_srv[srv_i];
-#endif
 						close(tac_fd);
 						break;
 					}
@@ -615,29 +519,31 @@ int pam_sm_authenticate(pam_handle_t * pamh, int flags, int argc, const char **a
 				/* OK, we got authenticated; save the server that
 				 accepted us for pam_sm_acct_mgmt and exit the loop */
 				status = PAM_SUCCESS;
-#ifdef CONFIG_PD3
 				active_server = srv_i->ip.s_addr;
 				active_encryption = tac_encryption;
-#else
-				active_server = tac_srv[srv_i];
-#endif
 				close(tac_fd);
 				break;
 			}
 		}
 		close(tac_fd);
-		/* if we are here, this means that authentication failed
-		 on current server; break if we are not allowed to probe
-		 another one, continue otherwise */
-		if (!(ctrl & PAM_TAC_FIRSTHIT))
-			break;
+		if (msg == PAM_AUTHINFO_UNAVAIL) {
+			/* Somehow we got connected, but communication with
+			 * server failed. Try the next one. */
+			if (srv_i->next == NULL) {
+				/* last server tried */
+				_pam_log(LOG_ERR, "no more servers to connect");
+				return PAM_AUTHINFO_UNAVAIL;
+			} else {
+				continue; /* Try next server */
+			}
+
+		}
 	}
-#ifdef CONFIG_PD3
 	/* Save info for using during this session */
 	_set_config((char *)user);
 
 	cleanup(&tac_srv);
-#endif
+
 	if (ctrl & PAM_TAC_DEBUG)
 		syslog(LOG_DEBUG, "%s: exit with pam status: %i", __FUNCTION__, status);
 
@@ -678,7 +584,6 @@ int pam_sm_acct_mgmt(pam_handle_t * pamh, int flags, int argc, const char **argv
 	int tac_fd;
 	char *rhostname;
 	u_long rhost = 0;
-#ifdef CONFIG_PD3
 	char *tac_cmd = NULL;
 	tacacs_server_t *srv_i;
 	u_long tac_servers[TAC_MAX_SERVERS];
@@ -690,7 +595,6 @@ int pam_sm_acct_mgmt(pam_handle_t * pamh, int flags, int argc, const char **argv
 		if (retval != PAM_SUCCESS)
 			return retval;
 	}
-#endif
 
 	user = tty = rhostname = NULL;
 
@@ -733,7 +637,6 @@ int pam_sm_acct_mgmt(pam_handle_t * pamh, int flags, int argc, const char **argv
 		syslog(LOG_DEBUG, "%s: tty obtained [%s]", __FUNCTION__, tty);
 
 
-#ifdef CONFIG_PD3
 	/* If there are no active servers, check for data file */
 	if (!active_server)
 		_get_config((char *)user);
@@ -743,16 +646,6 @@ int pam_sm_acct_mgmt(pam_handle_t * pamh, int flags, int argc, const char **argv
 		if (retval != PAM_SUCCESS)
 			_pam_log(LOG_ERR, "unable to obtain cmd\n");
 	}
-#else
-	/* checks if user has been successfully authenticated
-	 by TACACS+; we cannot solely authorize user if it hasn't
-	 been authenticated or has been authenticated by method other
-	 than TACACS+ */
-	if (!active_server) {
-		_pam_log(LOG_ERR, "user not authenticated by TACACS+");
-		return PAM_AUTH_ERR;
-	}
-#endif
 
 	/* checks for specific data required by TACACS+, which should
 	 be supplied in command line  */
@@ -763,32 +656,33 @@ int pam_sm_acct_mgmt(pam_handle_t * pamh, int flags, int argc, const char **argv
 
 	tac_add_attrib(&attr, "service", tac_service);
 
-#ifdef CONFIG_PD3
 	/* AV cmd in tests has been always necessary */
-	if (tac_cmd != NULL && *tac_cmd != '\0')
-		tac_add_attrib(&attr, "cmd", tac_cmd);
-	else
+	if (tac_cmd != NULL && *tac_cmd != '\0') {
+		arglist *args;
+		int i;
+		char priv[8];
+
+		sprintf(priv, "%d", librouter_pam_get_privilege());
+		tac_add_attrib(&attr, "priv-lvl", priv);
+
+		args = librouter_make_args(tac_cmd);
+		tac_add_attrib(&attr, "cmd", args->argv[0]);
+		for (i = 1; i < args->argc; i++)
+			tac_add_attrib(&attr, "cmd-args", args->argv[i]);
+		librouter_destroy_args(args);
+	} else
 		tac_add_attrib(&attr, "cmd", "");
 
 	/* AV protocol is necessary only on PPP, we shouldn't fail if not set */
 	if (tac_protocol != NULL && *tac_protocol != '\0')
 		tac_add_attrib(&attr, "protocol", tac_protocol);
 
-#else
-	if (tac_protocol == NULL || *tac_protocol == '\0') {
-		_pam_log(LOG_ERR, "TACACS+ protocol type not configured");
-		return PAM_AUTH_ERR;
-	}
-
-	tac_add_attrib(&attr, "protocol", tac_protocol);
-#endif
 	if (rhost) {
 		struct in_addr addr;
 		bcopy(&rhost, &addr.s_addr, sizeof(addr.s_addr));
 		tac_add_attrib(&attr, "ip", inet_ntoa(addr));
 	}
 
-#ifdef CONFIG_PD3
 	tac_encryption = active_encryption;
 
 	/* No active server, so perhaps we were not authenticated by TACACS+.
@@ -808,9 +702,6 @@ int pam_sm_acct_mgmt(pam_handle_t * pamh, int flags, int argc, const char **argv
 			tac_timeout[i] = srv_i->timeout;
 		}
 		tac_fd = tac_connect(tac_servers, tac_timeout, i);
-#else
-	tac_fd = tac_connect_single(active_server);
-#endif
 	} else
 		tac_fd = tac_connect_single(active_server, 3); /* FIXME Timeout hardcoded */
 

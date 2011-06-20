@@ -112,6 +112,6 @@ void _tac_crypt(u_char *buf, HDR *th, int length)
 		free(pad);
 
 	} else {
-		syslog(LOG_WARNING, "%s: using no TACACS+ encryption", __FUNCTION__);
+		syslog(LOG_WARNING, "Using no TACACS+ encryption\n");
 	}
 } /* _tac_crypt */

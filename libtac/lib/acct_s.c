@@ -25,10 +25,6 @@
 #include <syslog.h>
 #include <unistd.h>
 
-#ifndef __linux__
-  #include <strings.h>
-#endif
-
 #include "tacplus.h"
 #include "libtac.h"
 #include "xalloc.h"

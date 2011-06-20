@@ -22,10 +22,6 @@
 #ifndef _AUTH_TAC_H
 #define _AUTH_TAC_H
 
-#ifndef CONFIG_PD3
-#define CONFIG_PD3
-#endif
-
 #if defined(DEBUGTAC) && !defined(TACDEBUG)
 #define TACDEBUG(x)	syslog x;
 #else
@@ -50,13 +46,8 @@ extern char *tac_login;
 
 /* connect.c */
 extern int tac_timeout;
-#ifdef CONFIG_PD3
 extern int tac_connect(u_long *server, int *timeout, int servers);
 extern int tac_connect_single(u_long server, int timeout);
-#else
-extern int tac_connect(u_long *server, int servers);
-extern int tac_connect_single(u_long server);
-#endif
 
 /* magic.c */
 extern u_int32_t magic();

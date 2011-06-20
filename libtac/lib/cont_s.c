@@ -24,10 +24,6 @@
 #include <netinet/in.h>
 #include <unistd.h>
 
-#ifndef __linux__
-#include <strings.h>
-#endif
-
 #include "tacplus.h"
 #include "libtac.h"
 #include "md5.h"
@@ -58,7 +54,6 @@ int tac_cont_send(int fd, char *pass)
 	tb.user_msg_len = htons(pass_len);
 	tb.user_data_len = tb.flags = 0;
 
-#ifdef CONFIG_PD3
 	/* fill body length in header */
 	bodylength = sizeof (tb) + pass_len;
 	th->datalength = htonl(bodylength);
@@ -90,44 +85,7 @@ int tac_cont_send(int fd, char *pass)
 		       __FUNCTION__, w, pkt_len);
 		ret = -1;
 	}
-#else
-#error "CONFIG_PD3 not defined!"
-	/* fill body length in header */
-	bodylength = TAC_AUTHEN_CONT_FIXED_FIELDS_SIZE + pass_len;
 
-	th->datalength = htonl(bodylength);
-
-	/* we can now write the header */
-	w = write(fd, th, TAC_PLUS_HDR_SIZE);
-	if (w < 0 || w < TAC_PLUS_HDR_SIZE) {
-		syslog(LOG_ERR, "%s: short write on header: wrote %d of %d: %m", __FUNCTION__, w,
-		                TAC_PLUS_HDR_SIZE);
-		ret = -1;
-	}
-
-	/* build the packet */
-	pkt = (u_char *) xcalloc(1, bodylength);
-
-	bcopy(&tb, pkt + pkt_len, TAC_AUTHEN_CONT_FIXED_FIELDS_SIZE); /* packet body beginning */
-	pkt_len += TAC_AUTHEN_CONT_FIXED_FIELDS_SIZE;
-	bcopy(pass, pkt + pkt_len, pass_len); /* password */
-	pkt_len += pass_len;
-
-	/* pkt_len == bodylength ? */
-	if (pkt_len != bodylength) {
-		syslog(LOG_ERR, "%s: bodylength %d != pkt_len %d", __FUNCTION__, bodylength, pkt_len);
-		ret = -1;
-	}
-
-	/* encrypt the body */
-	_tac_crypt(pkt, th, bodylength);
-
-	w = write(fd, pkt, pkt_len);
-	if (w < 0 || w < pkt_len) {
-		syslog(LOG_ERR, "%s: short write on body: wrote %d of %d: %m", __FUNCTION__, w, pkt_len);
-		ret = -1;
-	}
-#endif
 	free(pkt);
 	free(th);
 
