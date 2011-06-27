@@ -53,7 +53,7 @@ extern int tac_connect_single(u_long server, int timeout);
 extern u_int32_t magic();
 
 /*  authen_s.c*/
-extern int tac_authen_send(int fd, const char *user, char *pass, char *tty);
+extern int tac_authen_send(int fd, const char *service, const char *user, char *pass, char *tty);
 extern int tac_authen_read(int fd);
 extern int tac_cont_send(int fd, char *pass);
 extern HDR *_tac_req_header(u_char type);

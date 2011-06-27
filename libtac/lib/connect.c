@@ -99,7 +99,8 @@ int tac_connect(u_long *server, int *timeout, int servers)
 			continue;
 		}
 
-		/* set fds for select */FD_ZERO(&readfds);
+		/* set fds for select */
+		FD_ZERO(&readfds);
 		FD_SET(fd, &readfds);
 		writefds = readfds;
 

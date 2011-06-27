@@ -33,10 +33,12 @@
 #include "libtac.h"
 #include "md5.h"
 
+#include <librouter/pam.h>
+
 /* this function sends a packet do TACACS+ server, asking
  * for validation of given username and password
  */
-int tac_authen_send(int fd, const char *user, char *pass, char *tty)
+int tac_authen_send(int fd, const char *service, const char *user, char *pass, char *tty)
 {
 	HDR *th;		/* TACACS+ packet header */
 	struct authen_start tb;	/* start message body */
@@ -44,6 +46,8 @@ int tac_authen_send(int fd, const char *user, char *pass, char *tty)
 	int pkt_len;
 	u_char *pkt;
 	int ret = 0;
+	int enable = 0; /* Use to indicate enable authentication */
+	char *enable_user = NULL;
 
 	session_id = 0; /* Grant us a new session ID */
 
@@ -57,16 +61,37 @@ int tac_authen_send(int fd, const char *user, char *pass, char *tty)
 		  __FUNCTION__, user, pass, tty,
 		  (tac_encryption) ? "yes" : "no"))
 
-	/* get size of submitted data */
-	user_len = strlen(user);
-	port_len = strlen(tty);
-	pass_len = strlen(pass);
+	if (!strcmp(service,"enable")) {
+		enable = 1;
+		enable_user = calloc(1, 64);
+		librouter_pam_get_username(enable_user);
+	}
 
 	/* fill the body of message */
 	tb.action = TAC_PLUS_AUTHEN_LOGIN;
-	tb.priv_lvl = TAC_PLUS_PRIV_LVL_USR;
 	tb.authen_type = TAC_PLUS_AUTHEN_TYPE_ASCII;
-	tb.service = TAC_PLUS_AUTHEN_SVC_LOGIN;
+
+	if (enable) {
+		tb.service = TAC_PLUS_AUTHEN_SVC_ENABLE;
+		tb.priv_lvl = librouter_pam_get_privilege();
+		if (!strcmp(user, "admin"))
+			tb.priv_lvl = TAC_PLUS_PRIV_LVL_MAX;
+		else if (!strcmp(user, "root"))
+			tb.priv_lvl = TAC_PLUS_PRIV_LVL_MAX;
+		else if (tb.priv_lvl == 0)
+			tb.priv_lvl = TAC_PLUS_PRIV_LVL_USR; /* HACK ! */
+	} else {
+		tb.service = TAC_PLUS_AUTHEN_SVC_LOGIN;
+		tb.priv_lvl = TAC_PLUS_PRIV_LVL_USR;
+	}
+
+
+	/* get size of submitted data */
+
+	user_len = enable ? strlen(enable_user) : strlen(user);
+	port_len = strlen(tty);
+	pass_len = strlen(pass);
+
 	tb.user_len = user_len;
 	tb.port_len = port_len;
 	tb.rem_addr_len = 0;	/* may be e.g Caller-ID in future */
@@ -83,7 +108,7 @@ int tac_authen_send(int fd, const char *user, char *pass, char *tty)
 	pkt_len += TAC_PLUS_HDR_SIZE;
 	bcopy(&tb, pkt + pkt_len, sizeof (tb));	/* packet body beginning */
 	pkt_len += sizeof (tb);
-	bcopy(user, pkt + pkt_len, user_len);	/* user */
+	bcopy(enable ? enable_user : user, pkt + pkt_len, user_len);	/* user */
 	pkt_len += user_len;
 	bcopy(tty, pkt + pkt_len, port_len);	/* tty */
 	pkt_len += port_len;
@@ -106,6 +131,8 @@ int tac_authen_send(int fd, const char *user, char *pass, char *tty)
 		ret = -1;
 	}
 
+	if (enable_user)
+		free(enable_user);
 	free(pkt);
 	free(th);
 

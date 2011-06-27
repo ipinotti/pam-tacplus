@@ -211,11 +211,7 @@ int _pam_account(pam_handle_t *pamh, int argc, const char **argv, int type)
 {
 	int retval;
 	static int ctrl;
-#if (defined(__linux__) || defined(__NetBSD__))
 	char *user = NULL;
-#else
-	const char *user = NULL;
-#endif
 	char *tty = NULL;
 	char *typemsg;
 	int status = PAM_SESSION_ERR;
@@ -228,11 +224,8 @@ int _pam_account(pam_handle_t *pamh, int argc, const char **argv, int type)
 	if (ctrl & PAM_TAC_DEBUG)
 		syslog(LOG_DEBUG, "%s: [%s] called (pam_tacplus v%hu.%hu.%hu)", __FUNCTION__,
 		                typemsg, PAM_TAC_VMAJ, PAM_TAC_VMIN, PAM_TAC_VPAT);
-#if (defined(__linux__) || defined(__NetBSD__))
+
 	retval = pam_get_item(pamh, PAM_USER, (const void **) (const void*) &user);
-#else
-	retval = pam_get_item(pamh, PAM_USER, (void **) (void*) &user);
-#endif
 	if (retval != PAM_SUCCESS || user == NULL || *user == '\0') {
 		_pam_log(LOG_ERR, "%s: unable to obtain username", __FUNCTION__);
 		return PAM_SESSION_ERR;
@@ -399,11 +392,7 @@ int _pam_account(pam_handle_t *pamh, int argc, const char **argv, int type)
 int pam_sm_authenticate(pam_handle_t * pamh, int flags, int argc, const char **argv)
 {
 	int ctrl, retval;
-#if (defined(__linux__) || defined(__NetBSD__))
-	const char *user;
-#else
-	char *user;
-#endif
+	const char *user, *service;
 	char *pass;
 	char *tty;
 	tacacs_server_t *srv_i;
@@ -428,6 +417,12 @@ int pam_sm_authenticate(pam_handle_t * pamh, int flags, int argc, const char **a
 	retval = pam_get_user(pamh, &user, "Username: ");
 	if (retval != PAM_SUCCESS || user == NULL || *user == '\0') {
 		_pam_log(LOG_ERR, "unable to obtain username");
+		return PAM_USER_UNKNOWN;
+	}
+
+	retval = pam_get_item(pamh, PAM_SERVICE, (const void **) (const void *) &service);
+	if (retval != PAM_SUCCESS || service == NULL || *service == '\0') {
+		_pam_log(LOG_ERR, "unable to obtain service");
 		return PAM_USER_UNKNOWN;
 	}
 
@@ -485,8 +480,8 @@ int pam_sm_authenticate(pam_handle_t * pamh, int flags, int argc, const char **a
 			}
 		}
 
-		if (tac_authen_send(tac_fd, user, pass, tty) < 0) {
-			_pam_log(LOG_ERR, "error sending auth req to TACACS+ server");
+		if (tac_authen_send(tac_fd, service, user, pass, tty) < 0) {
+			_pam_log(LOG_ERR, "Error sending 'authentication request' to TACACS+ server");
 			status = PAM_AUTHINFO_UNAVAIL;
 		} else {
 			msg = tac_authen_read(tac_fd);
@@ -495,7 +490,7 @@ int pam_sm_authenticate(pam_handle_t * pamh, int flags, int argc, const char **a
 					syslog(LOG_DEBUG, "%s: tac_cont_send called", __FUNCTION__);
 				if (tac_cont_send(tac_fd, pass) < 0) {
 					_pam_log(LOG_ERR,
-					                "error sending continue req to TACACS+ server");
+					                "Error sending 'continue request' to TACACS+ server");
 					status = PAM_AUTHINFO_UNAVAIL;
 				} else {
 					msg = tac_authen_read(tac_fd);
@@ -615,11 +610,7 @@ int pam_sm_acct_mgmt(pam_handle_t * pamh, int flags, int argc, const char **argv
 		syslog(LOG_DEBUG, "%s: active server is [%s]", __FUNCTION__, inet_ntoa(addr));
 	}
 
-#if (defined(__linux__) || defined(__NetBSD__))
 	retval = pam_get_item(pamh, PAM_USER, (const void **) (const void*) &user);
-#else
-	retval = pam_get_item(pamh, PAM_USER, (void **) (void*) &user);
-#endif
 	if (retval != PAM_SUCCESS || user == NULL || *user == '\0') {
 		_pam_log(LOG_ERR, "unable to obtain username");
 		return PAM_USER_UNKNOWN;
