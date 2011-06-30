@@ -181,6 +181,7 @@ struct authen_reply {
 #define AUTHEN_METH_ENABLE           0x04
 #define AUTHEN_METH_LOCAL            0x05
 #define AUTHEN_METH_TACACSPLUS       0x06
+#define AUTHEN_METH_RADIUS           0x10
 #define AUTHEN_METH_RCMD             0x20
 
 struct acct {
