@@ -478,6 +478,7 @@ int pam_sm_authenticate(pam_handle_t * pamh, int flags, int argc, const char **a
 		tac_fd = tac_connect_single(srv_i->ip.s_addr, srv_i->timeout);
 
 		if (tac_fd < 0) {
+			free(tac_secret);
 			if (srv_i->next == NULL) {
 				/* last server tried */
 				_pam_log(LOG_ERR, "no more servers to connect");
@@ -490,44 +491,48 @@ int pam_sm_authenticate(pam_handle_t * pamh, int flags, int argc, const char **a
 		if (tac_authen_send(tac_fd, service, user, pass, tty) < 0) {
 			_pam_log(LOG_ERR, "Error sending 'authentication request' to TACACS+ server");
 			status = PAM_AUTHINFO_UNAVAIL;
-		} else {
-			msg = tac_authen_read(tac_fd);
-			if (msg == TAC_PLUS_AUTHEN_STATUS_GETPASS) {
-				if (ctrl & PAM_TAC_DEBUG)
-					syslog(LOG_DEBUG, "%s: tac_cont_send called", __FUNCTION__);
-				if (tac_cont_send(tac_fd, pass) < 0) {
-					_pam_log(LOG_ERR,
-					                "Error sending 'continue request' to TACACS+ server");
-					status = PAM_AUTHINFO_UNAVAIL;
-				} else {
-					msg = tac_authen_read(tac_fd);
-					if (msg != TAC_PLUS_AUTHEN_STATUS_PASS) {
-						_pam_log(LOG_ERR, "auth failed: %d", msg);
-						status = PAM_AUTH_ERR;
-					} else {
-						/* OK, we got authenticated; save the server that
-						 accepted us for pam_sm_acct_mgmt and exit the loop */
-						status = PAM_SUCCESS;
-						active_server = srv_i->ip.s_addr;
-						active_encryption = tac_encryption;
-						close(tac_fd);
-						break;
-					}
-				}
-			} else if (msg != TAC_PLUS_AUTHEN_STATUS_PASS) {
-				_pam_log(LOG_ERR, "auth failed: %d", msg);
-				status = PAM_AUTH_ERR;
-			} else {
-				/* OK, we got authenticated; save the server that
-				 accepted us for pam_sm_acct_mgmt and exit the loop */
-				status = PAM_SUCCESS;
-				active_server = srv_i->ip.s_addr;
-				active_encryption = tac_encryption;
-				close(tac_fd);
-				break;
-			}
+			goto auth_end;
 		}
+
+		msg = tac_authen_read(tac_fd);
+		if (msg == TAC_PLUS_AUTHEN_STATUS_GETPASS) {
+			if (ctrl & PAM_TAC_DEBUG)
+				syslog(LOG_DEBUG, "%s: tac_cont_send called", __FUNCTION__);
+			if (tac_cont_send(tac_fd, pass) < 0) {
+				_pam_log(LOG_ERR, "Error sending 'continue request' to TACACS+ server");
+				status = PAM_AUTHINFO_UNAVAIL;
+			} else {
+				msg = tac_authen_read(tac_fd);
+				if (msg != TAC_PLUS_AUTHEN_STATUS_PASS) {
+					_pam_log(LOG_ERR, "auth failed: %d", msg);
+					status = PAM_AUTH_ERR;
+				} else {
+					/* OK, we got authenticated; save the server that
+					 accepted us for pam_sm_acct_mgmt and exit the loop */
+					status = PAM_SUCCESS;
+					active_server = srv_i->ip.s_addr;
+					active_encryption = tac_encryption;
+					close(tac_fd);
+					break;
+				}
+			}
+		} else if (msg != TAC_PLUS_AUTHEN_STATUS_PASS) {
+			_pam_log(LOG_ERR, "auth failed: %d", msg);
+			status = PAM_AUTH_ERR;
+		} else {
+			/* OK, we got authenticated; save the server that
+			 accepted us for pam_sm_acct_mgmt and exit the loop */
+			status = PAM_SUCCESS;
+			active_server = srv_i->ip.s_addr;
+			active_encryption = tac_encryption;
+			close(tac_fd);
+			break;
+		}
+
+
+auth_end:
 		close(tac_fd);
+
 		if (msg == PAM_AUTHINFO_UNAVAIL) {
 			/* Somehow we got connected, but communication with
 			 * server failed. Try the next one. */
@@ -538,11 +543,14 @@ int pam_sm_authenticate(pam_handle_t * pamh, int flags, int argc, const char **a
 			} else {
 				continue; /* Try next server */
 			}
-
 		}
 	}
+
 	/* Save info for using during this session */
-	_set_config((char *)user);
+	if (status == PAM_SUCCESS) {
+		_set_config((char *)user);
+		free(tac_secret);
+	}
 
 	cleanup(&tac_srv);
 
