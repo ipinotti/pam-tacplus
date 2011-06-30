@@ -91,6 +91,7 @@ struct tacacs_data_t {
 	u_long active_server;
 	int active_encryption;
 	int active_timeout;
+	char key[128];
 };
 
 /**
@@ -119,6 +120,9 @@ int _get_config(char *username)
 	active_server = cfg.active_server;
 	active_encryption  = cfg.active_encryption;
 
+	tac_secret = _xcalloc(strlen(cfg.key) + 1);
+	strcpy(tac_secret, cfg.key);
+
 	return 0;
 }
 
@@ -141,6 +145,9 @@ int _set_config(char *username)
 
 	cfg.active_encryption = active_encryption;
 	cfg.active_server = active_server;
+
+	if (active_encryption)
+		strncpy(cfg.key, tac_secret, sizeof(cfg.key));
 
 	write(fd, (const void *) &cfg, sizeof(struct tacacs_data_t));
 
