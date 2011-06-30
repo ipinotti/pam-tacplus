@@ -346,6 +346,7 @@ int _pam_account(pam_handle_t *pamh, int argc, const char **argv, int type)
 				tac_encryption = 1;
 			else
 				tac_encryption = 0;
+
 			tac_fd = tac_connect_single(srv_i->ip.s_addr, srv_i->timeout);
 			if (tac_fd < 0) {
 				_pam_log(LOG_WARNING, "%s: error sending %s (fd)", __FUNCTION__,
@@ -363,6 +364,7 @@ int _pam_account(pam_handle_t *pamh, int argc, const char **argv, int type)
 				_pam_log(LOG_ERR, "unable to obtain cmd\n");
 
 			retval = _pam_send_account(tac_fd, type, user, tty, tac_cmd);
+
 			/* return code from function in this mode is
 			 status of the last server we tried to send
 			 packet to */
@@ -583,11 +585,7 @@ int pam_sm_setcred(pam_handle_t * pamh, int flags, int argc, const char **argv)
 int pam_sm_acct_mgmt(pam_handle_t * pamh, int flags, int argc, const char **argv)
 {
 	int retval, ctrl, status = PAM_AUTH_ERR;
-#if (defined(__linux__) || defined(__NetBSD__))
 	const char *user;
-#else
-	char *user;
-#endif
 	char *tty;
 	struct areply arep;
 	struct tac_attrib *attr = NULL;
@@ -645,7 +643,7 @@ int pam_sm_acct_mgmt(pam_handle_t * pamh, int flags, int argc, const char **argv
 
 	/* If there are no active servers, check for data file */
 	if (!active_server)
-		_get_config((char *)user);
+		_get_config((char *) user);
 
 	if (ctrl & PAM_TAC_CMD_AUTHOR) {
 		retval = pam_get_item(pamh, PAM_USER_PROMPT, (const void **) (const void *) &tac_cmd);
