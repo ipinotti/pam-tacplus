@@ -29,6 +29,9 @@
 #include "libtac.h"
 #include "xalloc.h"
 
+#include <librouter/defines.h>
+#include <librouter/pam.h>
+
 int tac_account_send(int fd, int type, const char *user, char *tty,
 	 struct tac_attrib *attr) {
 	HDR *th;
@@ -42,6 +45,7 @@ int tac_account_send(int fd, int type, const char *user, char *tty,
 	u_char *pkt;
 	/* u_char *pktp; */ 		/* obsolute */
 	int ret = 0;
+	int mode;
 
 	th=_tac_req_header(TAC_PLUS_ACCT);
 
@@ -58,7 +62,27 @@ int tac_account_send(int fd, int type, const char *user, char *tty,
 	port_len=(u_char) strlen(tty);
 
 	tb.flags=(u_char) type;
-	tb.authen_method=AUTHEN_METH_TACACSPLUS;
+
+	mode = librouter_pam_get_current_mode(FILE_PAM_LOGIN);
+	switch (mode) {
+	case AAA_AUTH_NONE:
+		tb.authen_method = AUTHEN_METH_NONE;
+		break;
+	case AAA_AUTH_LOCAL:
+		tb.authen_method = AUTHEN_METH_LOCAL;
+		break;
+	case AAA_AUTH_RADIUS:
+	case AAA_AUTHOR_RADIUS_LOCAL:
+		tb.authen_method = AUTHEN_METH_RADIUS;
+		break;
+	case AAA_AUTH_TACACS:
+	case AAA_AUTH_TACACS_LOCAL:
+	default:
+		tb.authen_method = AUTHEN_METH_TACACSPLUS;
+		break;
+	}
+
+
 	tb.priv_lvl=TAC_PLUS_PRIV_LVL_MIN;
 	if(strcmp(tac_login,"chap") == 0) {
 		tb.authen_type=TAC_PLUS_AUTHEN_TYPE_CHAP;
