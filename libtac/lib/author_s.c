@@ -88,7 +88,6 @@ int tac_author_send(int fd, const char *user, char *tty, struct tac_attrib *attr
 		break;
 	}
 
-	tb.priv_lvl = TAC_PLUS_PRIV_LVL_MIN;
 	if (strcmp(tac_login, "chap") == 0) {
 		tb.authen_type = TAC_PLUS_AUTHEN_TYPE_CHAP;
 	} else if (strcmp(tac_login, "login") == 0) {
@@ -110,6 +109,17 @@ int tac_author_send(int fd, const char *user, char *tty, struct tac_attrib *attr
 	/* fill attribute length fields */
 	a = attr;
 	while (a) {
+		/* Hack para autorizar comandos primarios (antes do ENABLE) com privilegio 1, e depois do ENABLE, com privilegio 15 ou 7*/
+		if (strstr(a->attr, "priv-lvl")){
+			if (strstr(a->attr,"15") || strstr(a->attr,"7")){
+				tb.priv_lvl = librouter_pam_get_privilege();
+				if ( (!strcmp(user, "admin")) || (!strcmp(user, "root")) || (tb.priv_lvl == 0) )
+					tb.priv_lvl = TAC_PLUS_PRIV_LVL_MAX;
+			}
+			else{
+				tb.priv_lvl = TAC_PLUS_PRIV_LVL_USR;
+			}
+		}
 
 		pktl = pkt_len;
 		pkt_len += sizeof(a->attr_len);

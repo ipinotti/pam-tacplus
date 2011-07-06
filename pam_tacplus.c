@@ -94,6 +94,16 @@ struct tacacs_data_t {
 	char key[128];
 };
 
+int tacacs_librouter_pam_get_privilege(){
+	int ret = 0;
+
+	if ((ret = librouter_pam_get_privilege()) == 0)
+		ret = 15; /* tb.priv_lvl = TAC_PLUS_PRIV_LVL_MAX */
+
+	return ret;
+}
+
+
 /**
 * _get_config	Get user data saved earlier
 *
@@ -184,7 +194,7 @@ int _pam_send_account(int tac_fd, int type, char *user, char *tty, char *cmd)
 
 	/* Command log */
 	if (cmd != NULL) {
-		sprintf(buf, "%d", librouter_pam_get_privilege());
+		sprintf(buf, "%d", tacacs_librouter_pam_get_privilege());
 		tac_add_attrib(&attr, "priv-lvl", buf);
 		tac_add_attrib(&attr, "cmd", cmd);
 	}
@@ -418,7 +428,6 @@ int pam_sm_authenticate(pam_handle_t * pamh, int flags, int argc, const char **a
 			return retval;
 	}
 
-
 	if (ctrl & PAM_TAC_DEBUG)
 		syslog(LOG_DEBUG, "%s: called (pam_tacplus v%hu.%hu.%hu)", __FUNCTION__,
 		                PAM_TAC_VMAJ, PAM_TAC_VMIN, PAM_TAC_VPAT);
@@ -593,6 +602,7 @@ int pam_sm_acct_mgmt(pam_handle_t * pamh, int flags, int argc, const char **argv
 	char *rhostname;
 	u_long rhost = 0;
 	char *tac_cmd = NULL;
+	char *enable_cli = NULL;
 	tacacs_server_t *srv_i;
 	u_long tac_servers[TAC_MAX_SERVERS];
 	int tac_timeout[TAC_MAX_SERVERS];
@@ -646,9 +656,15 @@ int pam_sm_acct_mgmt(pam_handle_t * pamh, int flags, int argc, const char **argv
 		_get_config((char *) user);
 
 	if (ctrl & PAM_TAC_CMD_AUTHOR) {
+		/*Hack para adquirir cmds do CLI para o PAM*/
 		retval = pam_get_item(pamh, PAM_USER_PROMPT, (const void **) (const void *) &tac_cmd);
 		if (retval != PAM_SUCCESS)
 			_pam_log(LOG_ERR, "unable to obtain cmd\n");
+
+		/*Hack para adquirir status do _cish_enable do CLI para o PAM*/
+		retval = pam_get_item(pamh, PAM_XDISPLAY, (const void **) (const void *) &enable_cli);
+		if (retval != PAM_SUCCESS)
+			_pam_log(LOG_ERR, "unable to obtain enable_cli status\n");
 	}
 
 	/* checks for specific data required by TACACS+, which should
@@ -666,7 +682,11 @@ int pam_sm_acct_mgmt(pam_handle_t * pamh, int flags, int argc, const char **argv
 		int i;
 		char priv[8];
 
-		sprintf(priv, "%d", librouter_pam_get_privilege());
+		if (atoi(enable_cli))
+			sprintf(priv, "%d", tacacs_librouter_pam_get_privilege());
+		else
+			sprintf(priv, "%d", TAC_PLUS_PRIV_LVL_USR);
+
 		tac_add_attrib(&attr, "priv-lvl", priv);
 
 		args = librouter_make_args(tac_cmd);
@@ -708,7 +728,6 @@ int pam_sm_acct_mgmt(pam_handle_t * pamh, int flags, int argc, const char **argv
 		tac_fd = tac_connect(tac_servers, tac_timeout, i);
 	} else
 		tac_fd = tac_connect_single(active_server, 3); /* FIXME Timeout hardcoded */
-
 
 	if (tac_fd < 0) {
 		_pam_log(LOG_ERR, "TACACS+ server unavailable");

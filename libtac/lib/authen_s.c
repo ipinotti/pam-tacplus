@@ -74,13 +74,10 @@ int tac_authen_send(int fd, const char *service, const char *user, char *pass, c
 	if (enable) {
 		tb.service = TAC_PLUS_AUTHEN_SVC_ENABLE;
 		tb.priv_lvl = librouter_pam_get_privilege();
-		if (!strcmp(user, "admin"))
+		if ( (!strcmp(user, "admin")) || (!strcmp(user, "root")) || (tb.priv_lvl == 0) )
 			tb.priv_lvl = TAC_PLUS_PRIV_LVL_MAX;
-		else if (!strcmp(user, "root"))
-			tb.priv_lvl = TAC_PLUS_PRIV_LVL_MAX;
-		else if (tb.priv_lvl == 0)
-			tb.priv_lvl = TAC_PLUS_PRIV_LVL_USR; /* HACK ! */
-	} else {
+	}
+	else {
 		tb.service = TAC_PLUS_AUTHEN_SVC_LOGIN;
 		tb.priv_lvl = TAC_PLUS_PRIV_LVL_USR;
 	}
