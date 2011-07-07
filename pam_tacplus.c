@@ -652,8 +652,16 @@ int pam_sm_acct_mgmt(pam_handle_t * pamh, int flags, int argc, const char **argv
 
 
 	/* If there are no active servers, check for data file */
-	if (!active_server)
+#ifdef OLDER_IMPLEMENT_GET_SECRET
+	if (!active_server){
 		_get_config((char *) user);
+	}
+#else
+	/* Hack para garantir que a variavel tac_secret seja restaurada do arquivo,
+	 * ja que ela sofre FREE na authentication, perdendo o valor para authorization exec*/
+	_get_config((char *) user);
+#endif
+
 
 	if (ctrl & PAM_TAC_CMD_AUTHOR) {
 		/*Hack para adquirir cmds do CLI para o PAM*/
@@ -694,8 +702,10 @@ int pam_sm_acct_mgmt(pam_handle_t * pamh, int flags, int argc, const char **argv
 		for (i = 1; i < args->argc; i++)
 			tac_add_attrib(&attr, "cmd-args", args->argv[i]);
 		librouter_destroy_args(args);
-	} else
+	}
+	else{
 		tac_add_attrib(&attr, "cmd", "");
+	}
 
 	/* AV protocol is necessary only on PPP, we shouldn't fail if not set */
 	if (tac_protocol != NULL && *tac_protocol != '\0')
