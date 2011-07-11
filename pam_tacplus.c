@@ -518,6 +518,7 @@ int pam_sm_authenticate(pam_handle_t * pamh, int flags, int argc, const char **a
 				if (msg != TAC_PLUS_AUTHEN_STATUS_PASS) {
 					_pam_log(LOG_ERR, "auth failed: %d", msg);
 					status = PAM_AUTH_ERR;
+					/*CONFIG_PD3*/
 					/* HACK para desistir na primeira negação de password/login, evitando verificar em outros servers tacacs*/
 					active_server = srv_i->ip.s_addr;
 					active_encryption = tac_encryption;
@@ -657,25 +658,30 @@ int pam_sm_acct_mgmt(pam_handle_t * pamh, int flags, int argc, const char **argv
 		syslog(LOG_DEBUG, "%s: tty obtained [%s]", __FUNCTION__, tty);
 
 
-	/* If there are no active servers, check for data file */
-	/* #ifdef CONFIG_PD3 */
+	/*CONFIG_PD3*/
 #ifdef OLDER_IMPLEMENT_GET_SECRET
+	/* If there are no active servers, check for data file */
 	if (!active_server){
 		_get_config((char *) user);
 	}
 #else
+	/*CONFIG_PD3*/
 	/* Hack para garantir que a variavel tac_secret seja restaurada do arquivo,
 	 * ja que ela sofre FREE na authentication, perdendo o valor para authorization exec*/
+
+	/* If there are no active servers, check for data file */
 	_get_config((char *) user);
 #endif
 
 
 	if (ctrl & PAM_TAC_CMD_AUTHOR) {
+		/*CONFIG_PD3*/
 		/*Hack para adquirir cmds do CLI para o PAM*/
 		retval = pam_get_item(pamh, PAM_USER_PROMPT, (const void **) (const void *) &tac_cmd);
 		if (retval != PAM_SUCCESS)
 			_pam_log(LOG_ERR, "unable to obtain cmd\n");
 
+		/*CONFIG_PD3*/
 		/*Hack para adquirir status do _cish_enable do CLI para o PAM*/
 		retval = pam_get_item(pamh, PAM_XDISPLAY, (const void **) (const void *) &enable_cli);
 		if (retval != PAM_SUCCESS)
@@ -758,7 +764,10 @@ int pam_sm_acct_mgmt(pam_handle_t * pamh, int flags, int argc, const char **argv
 
 	if (retval < 0) {
 		_pam_log(LOG_ERR, "error getting authorization");
-		status = PAM_AUTH_ERR;
+		/*CONFIG_PD3*/
+		/* Hack para retornar PAM_AUTHINFO_UNAVAIL e autorizar login quando tacacs server falha, assumindo local */
+		/*status = PAM_AUTH_ERR;*/
+		status = PAM_AUTHINFO_UNAVAIL;
 		goto ErrExit;
 	}
 
@@ -768,7 +777,7 @@ int pam_sm_acct_mgmt(pam_handle_t * pamh, int flags, int argc, const char **argv
 	tac_author_read(tac_fd, &arep);
 
 	if (arep.status != AUTHOR_STATUS_PASS_ADD && arep.status != AUTHOR_STATUS_PASS_REPL) {
-		_pam_log(LOG_ERR, "TACACS+ authorisation failed for [%s]", user);
+		_pam_log(LOG_ERR, "TACACS+ authorization failed for [%s]", user);
 		status = PAM_PERM_DENIED;
 		goto ErrExit;
 	}

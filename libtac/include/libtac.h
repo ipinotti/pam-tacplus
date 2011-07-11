@@ -22,7 +22,6 @@
 #ifndef _AUTH_TAC_H
 #define _AUTH_TAC_H
 
-
 #if defined(DEBUGTAC) && !defined(TACDEBUG)
 #define TACDEBUG(x)	syslog x;
 #else
