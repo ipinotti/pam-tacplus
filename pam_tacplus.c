@@ -506,6 +506,7 @@ int pam_sm_authenticate(pam_handle_t * pamh, int flags, int argc, const char **a
 		}
 
 		msg = tac_authen_read(tac_fd);
+
 		if (msg == TAC_PLUS_AUTHEN_STATUS_GETPASS) {
 			if (ctrl & PAM_TAC_DEBUG)
 				syslog(LOG_DEBUG, "%s: tac_cont_send called", __FUNCTION__);
@@ -517,6 +518,11 @@ int pam_sm_authenticate(pam_handle_t * pamh, int flags, int argc, const char **a
 				if (msg != TAC_PLUS_AUTHEN_STATUS_PASS) {
 					_pam_log(LOG_ERR, "auth failed: %d", msg);
 					status = PAM_AUTH_ERR;
+					/* HACK para desistir na primeira negação de password/login, evitando verificar em outros servers tacacs*/
+					active_server = srv_i->ip.s_addr;
+					active_encryption = tac_encryption;
+					close(tac_fd);
+					break;
 				} else {
 					/* OK, we got authenticated; save the server that
 					 accepted us for pam_sm_acct_mgmt and exit the loop */
@@ -652,6 +658,7 @@ int pam_sm_acct_mgmt(pam_handle_t * pamh, int flags, int argc, const char **argv
 
 
 	/* If there are no active servers, check for data file */
+	/* #ifdef CONFIG_PD3 */
 #ifdef OLDER_IMPLEMENT_GET_SECRET
 	if (!active_server){
 		_get_config((char *) user);
