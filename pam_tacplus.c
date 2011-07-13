@@ -205,14 +205,14 @@ int _pam_send_account(int tac_fd, int type, char *user, char *tty, char *cmd)
 	tac_free_attrib(&attr);
 
 	if (retval < 0) {
-		_pam_log(LOG_WARNING, "%s: send %s accounting failed (task %hu)", __FUNCTION__,
+		_pam_log(LOG_WARNING, "TACACS+: %s: send %s accounting failed (task %hu)", __FUNCTION__,
 		                (type == TAC_PLUS_ACCT_FLAG_START) ? "start" : "stop", task_id);
 		status = -1;
 		goto ErrExit;
 	}
 
 	if (tac_account_read(tac_fd) != NULL) {
-		_pam_log(LOG_WARNING, "%s: accounting %s failed (task %hu)", __FUNCTION__,
+		_pam_log(LOG_WARNING, "TACACS+: %s: accounting %s failed (task %hu)", __FUNCTION__,
 		                (type == TAC_PLUS_ACCT_FLAG_START) ? "start" : "stop", task_id);
 		status = -1;
 		goto ErrExit;
@@ -233,7 +233,6 @@ int _pam_account(pam_handle_t *pamh, int argc, const char **argv, int type)
 	char *typemsg;
 	int status = PAM_SESSION_ERR;
 	char *tac_cmd = NULL;
-
 
 	typemsg = (type == TAC_PLUS_ACCT_FLAG_START) ? "START" : "STOP";
 	ctrl = _pam_parse(argc, argv);
@@ -272,7 +271,7 @@ int _pam_account(pam_handle_t *pamh, int argc, const char **argv, int type)
 	/* checks for specific data required by TACACS+, which should
 	 be supplied in command line  */
 	if (tac_service == NULL || *tac_service == '\0') {
-		_pam_log(LOG_ERR, "TACACS+ service type not configured");
+		_pam_log(LOG_ERR, "TACACS+: service type not configured");
 		return PAM_AUTH_ERR;
 	}
 
@@ -298,8 +297,10 @@ int _pam_account(pam_handle_t *pamh, int argc, const char **argv, int type)
 
 		status = PAM_SUCCESS;
 
-		if (tac_secret)
+		if (tac_secret != NULL){
 			free(tac_secret);
+			tac_secret = NULL;
+		}
 		tac_secret = (char *) _xcalloc(strlen(tac_srv->secret) + 1);
 		strcpy(tac_secret, tac_srv->secret);
 		if (strlen(tac_secret))
@@ -314,7 +315,7 @@ int _pam_account(pam_handle_t *pamh, int argc, const char **argv, int type)
 		tac_fd = tac_connect(tac_servers, tac_timeout, i);
 
 		if (tac_fd < 0) {
-			_pam_log(LOG_ERR, "%s: error sending %s - no servers", __FUNCTION__,
+			_pam_log(LOG_ERR, "TACACS+: %s: error sending %s - no servers", __FUNCTION__,
 			                typemsg);
 			status = PAM_SESSION_ERR;
 		}
@@ -324,13 +325,13 @@ int _pam_account(pam_handle_t *pamh, int argc, const char **argv, int type)
 		if (ctrl & PAM_TAC_CMD_ACCT) {
 			retval = pam_get_item(pamh, PAM_USER_PROMPT, (const void **) (const void *) &tac_cmd);
 			if (retval != PAM_SUCCESS)
-				_pam_log(LOG_ERR, "unable to obtain cmd\n");
+				_pam_log(LOG_ERR, "TACACS+: unable to obtain cmd\n");
 		}
 
 		retval = _pam_send_account(tac_fd, type, user, tty, tac_cmd);
 
 		if (retval < 0) {
-			_pam_log(LOG_ERR, "%s: error sending %s", __FUNCTION__, typemsg);
+			_pam_log(LOG_ERR, "TACACS+: %s: error sending %s", __FUNCTION__, typemsg);
 			status = PAM_SESSION_ERR;
 		}
 
@@ -348,8 +349,10 @@ int _pam_account(pam_handle_t *pamh, int argc, const char **argv, int type)
 		for (srv_i = tac_srv; srv_i; srv_i = srv_i->next) {
 			int tac_fd;
 
-			if (tac_secret)
+			if (tac_secret != NULL){
 				free(tac_secret);
+				tac_secret = NULL;
+			}
 			tac_secret = (char *) _xcalloc(strlen(srv_i->secret) + 1);
 			strcpy(tac_secret, srv_i->secret);
 			if (strlen(tac_secret))
@@ -359,7 +362,7 @@ int _pam_account(pam_handle_t *pamh, int argc, const char **argv, int type)
 
 			tac_fd = tac_connect_single(srv_i->ip.s_addr, srv_i->timeout);
 			if (tac_fd < 0) {
-				_pam_log(LOG_WARNING, "%s: error sending %s (fd)", __FUNCTION__,
+				_pam_log(LOG_WARNING, "TACACS+: %s: error sending %s (fd)", __FUNCTION__,
 				                typemsg);
 				continue;
 			}
@@ -371,7 +374,7 @@ int _pam_account(pam_handle_t *pamh, int argc, const char **argv, int type)
 			retval = pam_get_item(pamh, PAM_RHOST,
 			                (const void **) (const void *) &tac_cmd);
 			if (retval != PAM_SUCCESS)
-				_pam_log(LOG_ERR, "unable to obtain cmd\n");
+				_pam_log(LOG_ERR, "TACACS+: unable to obtain cmd\n");
 
 			retval = _pam_send_account(tac_fd, type, user, tty, tac_cmd);
 
@@ -379,7 +382,7 @@ int _pam_account(pam_handle_t *pamh, int argc, const char **argv, int type)
 			 status of the last server we tried to send
 			 packet to */
 			if (retval < 0) {
-				_pam_log(LOG_WARNING, "%s: error sending %s (acct)", __FUNCTION__,
+				_pam_log(LOG_WARNING, "TACACS+: %s: error sending %s (acct)", __FUNCTION__,
 				                typemsg);
 			} else {
 				status = PAM_SUCCESS;
@@ -477,8 +480,10 @@ int pam_sm_authenticate(pam_handle_t * pamh, int flags, int argc, const char **a
 
 		syslog(LOG_INFO, "TACACS+: trying authentication with %s", srv_i->hostname);
 
-		if (tac_secret)
+		if (tac_secret != NULL){
 			free(tac_secret);
+			tac_secret = NULL;
+		}
 		tac_secret = (char *) _xcalloc(strlen(srv_i->secret) + 1);
 		strcpy(tac_secret, srv_i->secret);
 		if (strlen(tac_secret))
@@ -490,6 +495,7 @@ int pam_sm_authenticate(pam_handle_t * pamh, int flags, int argc, const char **a
 
 		if (tac_fd < 0) {
 			free(tac_secret);
+			tac_secret = NULL;
 			if (srv_i->next == NULL) {
 				/* last server tried */
 				_pam_log(LOG_ERR, "no more servers to connect");
@@ -500,7 +506,7 @@ int pam_sm_authenticate(pam_handle_t * pamh, int flags, int argc, const char **a
 		}
 
 		if (tac_authen_send(tac_fd, service, user, pass, tty) < 0) {
-			_pam_log(LOG_ERR, "Error sending 'authentication request' to TACACS+ server");
+			_pam_log(LOG_ERR, "TACACS+: Error sending 'authentication request' to TACACS+ server");
 			status = PAM_AUTHINFO_UNAVAIL;
 			goto auth_end;
 		}
@@ -509,14 +515,14 @@ int pam_sm_authenticate(pam_handle_t * pamh, int flags, int argc, const char **a
 
 		if (msg == TAC_PLUS_AUTHEN_STATUS_GETPASS) {
 			if (ctrl & PAM_TAC_DEBUG)
-				syslog(LOG_DEBUG, "%s: tac_cont_send called", __FUNCTION__);
+				syslog(LOG_DEBUG, "TACACS+: %s: tac_cont_send called", __FUNCTION__);
 			if (tac_cont_send(tac_fd, pass) < 0) {
-				_pam_log(LOG_ERR, "Error sending 'continue request' to TACACS+ server");
+				_pam_log(LOG_ERR, "TACACS+: Error sending 'continue request' to TACACS+ server");
 				status = PAM_AUTHINFO_UNAVAIL;
 			} else {
 				msg = tac_authen_read(tac_fd);
 				if (msg != TAC_PLUS_AUTHEN_STATUS_PASS) {
-					_pam_log(LOG_ERR, "auth failed: %d", msg);
+					_pam_log(LOG_ERR, "TACACS+: auth failed: %d", msg);
 					status = PAM_AUTH_ERR;
 					/*CONFIG_PD3*/
 					/* HACK para desistir na primeira negação de password/login, evitando verificar em outros servers tacacs*/
@@ -535,7 +541,7 @@ int pam_sm_authenticate(pam_handle_t * pamh, int flags, int argc, const char **a
 				}
 			}
 		} else if (msg != TAC_PLUS_AUTHEN_STATUS_PASS) {
-			_pam_log(LOG_ERR, "auth failed: %d", msg);
+			_pam_log(LOG_ERR, "TACACS+: auth failed: %d", msg);
 			status = PAM_AUTH_ERR;
 		} else {
 			/* OK, we got authenticated; save the server that
@@ -556,7 +562,7 @@ auth_end:
 			 * server failed. Try the next one. */
 			if (srv_i->next == NULL) {
 				/* last server tried */
-				_pam_log(LOG_ERR, "no more servers to connect");
+				_pam_log(LOG_ERR, "TACACS+: no more servers to connect");
 				return PAM_AUTHINFO_UNAVAIL;
 			} else {
 				continue; /* Try next server */
@@ -568,6 +574,7 @@ auth_end:
 	if (status == PAM_SUCCESS) {
 		_set_config((char *)user);
 		free(tac_secret);
+		tac_secret = NULL;
 	}
 
 	cleanup(&tac_srv);
@@ -630,6 +637,7 @@ int pam_sm_acct_mgmt(pam_handle_t * pamh, int flags, int argc, const char **argv
 	 solution is found ;) */
 	ctrl = _pam_parse(argc, argv);
 
+
 	if (ctrl & PAM_TAC_DEBUG) {
 		struct in_addr addr;
 
@@ -672,7 +680,6 @@ int pam_sm_acct_mgmt(pam_handle_t * pamh, int flags, int argc, const char **argv
 	/* If there are no active servers, check for data file */
 	_get_config((char *) user);
 #endif
-
 
 	if (ctrl & PAM_TAC_CMD_AUTHOR) {
 		/*CONFIG_PD3*/
@@ -735,8 +742,10 @@ int pam_sm_acct_mgmt(pam_handle_t * pamh, int flags, int argc, const char **argv
 	/* No active server, so perhaps we were not authenticated by TACACS+.
 	 * Try all configured servers then! */
 	if (!active_server) {
-		if (tac_secret)
+		if (tac_secret != NULL){
 			free(tac_secret);
+			tac_secret = NULL;
+		}
 		tac_secret = (char *) _xcalloc(strlen(tac_srv->secret) + 1);
 		strcpy(tac_secret, tac_srv->secret);
 		if (strlen(tac_secret))
@@ -753,7 +762,7 @@ int pam_sm_acct_mgmt(pam_handle_t * pamh, int flags, int argc, const char **argv
 		tac_fd = tac_connect_single(active_server, 3); /* FIXME Timeout hardcoded */
 
 	if (tac_fd < 0) {
-		_pam_log(LOG_ERR, "TACACS+ server unavailable");
+		_pam_log(LOG_ERR, "TACACS+: server unavailable");
 		status = PAM_AUTH_ERR;
 		goto ErrExit;
 	}
@@ -763,7 +772,7 @@ int pam_sm_acct_mgmt(pam_handle_t * pamh, int flags, int argc, const char **argv
 	tac_free_attrib(&attr);
 
 	if (retval < 0) {
-		_pam_log(LOG_ERR, "error getting authorization");
+		_pam_log(LOG_ERR, "TACACS+: error getting authorization");
 		/*CONFIG_PD3*/
 		/* Hack para retornar PAM_AUTHINFO_UNAVAIL e autorizar login quando tacacs server falha, assumindo local */
 		/*status = PAM_AUTH_ERR;*/
@@ -843,6 +852,7 @@ int pam_sm_acct_mgmt(pam_handle_t * pamh, int flags, int argc, const char **argv
 		tac_free_attrib(&arep.attr);
 
 	ErrExit: close(tac_fd);
+
 	return status;
 } /* pam_sm_acct_mgmt */
 

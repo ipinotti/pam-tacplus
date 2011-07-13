@@ -107,7 +107,7 @@ int tac_authen_read(int fd) {
 	}
 
 	/* return pointer to server message */
-	syslog(LOG_DEBUG, "%s: authentication failed, server reply was %d", 
+	syslog(LOG_INFO, "TACACS+: %s: authentication failed, server reply was %d",
 					__FUNCTION__, r);
  	return(r);
 

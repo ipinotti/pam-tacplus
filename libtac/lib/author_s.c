@@ -62,7 +62,7 @@ int tac_author_send(int fd, const char *user, char *tty, struct tac_attrib *attr
 	th->version = TAC_PLUS_VER_0;
 	th->encryption = tac_encryption ? TAC_PLUS_ENCRYPTED : TAC_PLUS_CLEAR;
 
-	syslog(LOG_DEBUG, "%s: user '%s', tty '%s', encrypt: %s",
+	syslog(LOG_INFO, "TACACS+: %s: user '%s', tty '%s', encrypt: %s",
 					__FUNCTION__, user,
 					tty, tac_encryption ? "yes" : "no");
 
