@@ -165,13 +165,20 @@ int _set_config(char *username)
 }
 
 /* Helper functions */
-int _pam_send_account(int tac_fd, int type, char *user, char *tty, char *cmd)
+int _pam_send_account(int tac_fd, int type, char *user, char *tty, char *cmd, char *enable_cli)
 {
-	char buf[40];
-	struct tac_attrib *attr;
+	struct tac_attrib *attr = NULL;
 	int retval, status = -1;
+	char priv[6];
+	char buf[40];
+	memset(&priv, 0, sizeof(priv));
+	memset(&buf, 0, sizeof(buf));
 
+#if 0
+	/*CONFIG_PD3*/
+	/* Código original do accounting removido por impedir remanejo no pacote na função de send*/
 	attr = (struct tac_attrib *) _xcalloc(sizeof(struct tac_attrib));
+#endif
 
 	sprintf(buf, "%lu", (long unsigned int) time(0));
 
@@ -193,11 +200,18 @@ int _pam_send_account(int tac_fd, int type, char *user, char *tty, char *cmd)
 		tac_add_attrib(&attr, "protocol", tac_protocol);
 
 	/* Command log */
-	if (cmd != NULL) {
-		sprintf(buf, "%d", tacacs_librouter_pam_get_privilege());
-		tac_add_attrib(&attr, "priv-lvl", buf);
+	if ((cmd != NULL) && (enable_cli != NULL)) {
 		tac_add_attrib(&attr, "cmd", cmd);
+
+		if (atoi(enable_cli))
+			sprintf(priv, "%d", tacacs_librouter_pam_get_privilege());
+		else
+			sprintf(priv, "%d", TAC_PLUS_PRIV_LVL_USR);
 	}
+	else
+		sprintf(priv, "%d", TAC_PLUS_PRIV_LVL_USR);
+
+	tac_add_attrib(&attr, "priv-lvl", priv);
 
 	retval = tac_account_send(tac_fd, type, user, tty, attr);
 
@@ -207,18 +221,28 @@ int _pam_send_account(int tac_fd, int type, char *user, char *tty, char *cmd)
 	if (retval < 0) {
 		_pam_log(LOG_WARNING, "TACACS+: %s: send %s accounting failed (task %hu)", __FUNCTION__,
 		                (type == TAC_PLUS_ACCT_FLAG_START) ? "start" : "stop", task_id);
+#ifdef CONFIG_PD3
+		status = PAM_AUTHINFO_UNAVAIL;
+#else
 		status = -1;
+#endif
+
 		goto ErrExit;
 	}
 
 	if (tac_account_read(tac_fd) != NULL) {
 		_pam_log(LOG_WARNING, "TACACS+: %s: accounting %s failed (task %hu)", __FUNCTION__,
 		                (type == TAC_PLUS_ACCT_FLAG_START) ? "start" : "stop", task_id);
+#ifdef CONFIG_PD3
+		status = PAM_AUTH_ERR;
+#else
 		status = -1;
+#endif
+
 		goto ErrExit;
 	}
 
-	status = 0;
+	status = PAM_SUCCESS;
 
 	ErrExit: close(tac_fd);
 	return status;
@@ -233,8 +257,10 @@ int _pam_account(pam_handle_t *pamh, int argc, const char **argv, int type)
 	char *typemsg;
 	int status = PAM_SESSION_ERR;
 	char *tac_cmd = NULL;
+	char *enable_cli = NULL;
 
 	typemsg = (type == TAC_PLUS_ACCT_FLAG_START) ? "START" : "STOP";
+
 	ctrl = _pam_parse(argc, argv);
 
 	if (ctrl & PAM_TAC_DEBUG)
@@ -317,7 +343,8 @@ int _pam_account(pam_handle_t *pamh, int argc, const char **argv, int type)
 		if (tac_fd < 0) {
 			_pam_log(LOG_ERR, "TACACS+: %s: error sending %s - no servers", __FUNCTION__,
 			                typemsg);
-			status = PAM_SESSION_ERR;
+			/*CONFIG_PD3*/
+			status = PAM_AUTHINFO_UNAVAIL;
 		}
 		if (ctrl & PAM_TAC_DEBUG)
 			syslog(LOG_DEBUG, "%s: connected with fd=%d", __FUNCTION__, tac_fd);
@@ -326,13 +353,20 @@ int _pam_account(pam_handle_t *pamh, int argc, const char **argv, int type)
 			retval = pam_get_item(pamh, PAM_USER_PROMPT, (const void **) (const void *) &tac_cmd);
 			if (retval != PAM_SUCCESS)
 				_pam_log(LOG_ERR, "TACACS+: unable to obtain cmd\n");
+
+			/*CONFIG_PD3*/
+			/*Hack para adquirir status do _cish_enable do CLI para o PAM*/
+			retval = pam_get_item(pamh, PAM_XDISPLAY, (const void **) (const void *) &enable_cli);
+			if (retval != PAM_SUCCESS)
+				_pam_log(LOG_ERR, "unable to obtain enable_cli status\n");
 		}
 
-		retval = _pam_send_account(tac_fd, type, user, tty, tac_cmd);
+		retval = _pam_send_account(tac_fd, type, user, tty, tac_cmd, enable_cli);
 
 		if (retval < 0) {
 			_pam_log(LOG_ERR, "TACACS+: %s: error sending %s", __FUNCTION__, typemsg);
-			status = PAM_SESSION_ERR;
+			/*CONFIG_PD3*/
+			status = PAM_AUTHINFO_UNAVAIL;
 		}
 
 		close(tac_fd);
@@ -360,6 +394,11 @@ int _pam_account(pam_handle_t *pamh, int argc, const char **argv, int type)
 			else
 				tac_encryption = 0;
 
+			if (ctrl & PAM_TAC_CMD_ACCT)
+				syslog(LOG_INFO, "TACACS+: trying accounting command with %s", srv_i->hostname);
+			else
+				syslog(LOG_INFO, "TACACS+: trying accounting exec/login with %s", srv_i->hostname);
+
 			tac_fd = tac_connect_single(srv_i->ip.s_addr, srv_i->timeout);
 			if (tac_fd < 0) {
 				_pam_log(LOG_WARNING, "TACACS+: %s: error sending %s (fd)", __FUNCTION__,
@@ -368,32 +407,54 @@ int _pam_account(pam_handle_t *pamh, int argc, const char **argv, int type)
 			}
 
 			if (ctrl & PAM_TAC_DEBUG)
-				syslog(LOG_DEBUG,
-				       "%s: connected with fd=%d (srv %s)",
-				       __FUNCTION__, tac_fd, srv_i->hostname);
-			retval = pam_get_item(pamh, PAM_RHOST,
-			                (const void **) (const void *) &tac_cmd);
+				syslog(LOG_DEBUG, "%s: connected with fd=%d (srv %s)", __FUNCTION__, tac_fd, srv_i->hostname);
+
+#ifdef CONFIG_PD3
+			if (ctrl & PAM_TAC_CMD_ACCT) {
+				retval = pam_get_item(pamh, PAM_USER_PROMPT, (const void **) (const void *) &tac_cmd);
+				if (retval != PAM_SUCCESS)
+					_pam_log(LOG_ERR, "TACACS+: unable to obtain cmd\n");
+
+				/*CONFIG_PD3*/
+				/*Hack para adquirir status do _cish_enable do CLI para o PAM*/
+				retval = pam_get_item(pamh, PAM_XDISPLAY, (const void **) (const void *) &enable_cli);
+				if (retval != PAM_SUCCESS)
+					_pam_log(LOG_ERR, "unable to obtain enable_cli status\n");
+			}
+#else
+			retval = pam_get_item(pamh, PAM_RHOST, (const void **) (const void *) &tac_cmd);
 			if (retval != PAM_SUCCESS)
 				_pam_log(LOG_ERR, "TACACS+: unable to obtain cmd\n");
+#endif
 
-			retval = _pam_send_account(tac_fd, type, user, tty, tac_cmd);
+			retval = _pam_send_account(tac_fd, type, user, tty, tac_cmd, enable_cli);
 
 			/* return code from function in this mode is
 			 status of the last server we tried to send
 			 packet to */
-			if (retval < 0) {
-				_pam_log(LOG_WARNING, "TACACS+: %s: error sending %s (acct)", __FUNCTION__,
-				                typemsg);
-			} else {
-				status = PAM_SUCCESS;
-				if (ctrl & PAM_TAC_DEBUG)
-					syslog(LOG_DEBUG, "%s: [%s] for [%s] sent", __FUNCTION__,
-					                typemsg, user);
+			switch(retval){
+				case 0: status = PAM_SUCCESS;
+						if (ctrl & PAM_TAC_DEBUG)
+							syslog(LOG_DEBUG, "%s: [%s] for [%s] sent", __FUNCTION__, typemsg, user);
+						close(tac_fd);
+						goto acct_end;
+						break;
+				case 9: _pam_log(LOG_WARNING, "TACACS+: %s: error sending %s (acct) - server unavailable", __FUNCTION__, typemsg);
+						status = PAM_AUTHINFO_UNAVAIL;
+						close(tac_fd);
+						break;
+				case -1:
+				case 7:
+				default:_pam_log(LOG_WARNING, "TACACS+: %s: accounting failed in %s (acct)", __FUNCTION__, typemsg);
+						status = PAM_AUTH_ERR;
+						close(tac_fd);
+						goto acct_end;
+						break;
 			}
-			close(tac_fd);
 		}
 	} /* acct mode */
 
+acct_end:
 	if (type == TAC_PLUS_ACCT_FLAG_STOP) {
 		signal(SIGALRM, SIG_DFL);
 		signal(SIGCHLD, SIG_DFL);
@@ -708,7 +769,8 @@ int pam_sm_acct_mgmt(pam_handle_t * pamh, int flags, int argc, const char **argv
 	if (tac_cmd != NULL && *tac_cmd != '\0') {
 		arglist *args;
 		int i;
-		char priv[8];
+		char priv[6];
+		memset(&priv, 0, sizeof(priv));
 
 		if (atoi(enable_cli))
 			sprintf(priv, "%d", tacacs_librouter_pam_get_privilege());

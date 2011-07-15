@@ -20,10 +20,15 @@
  */
 
 #include <string.h>
+#include <stdio.h>
 #include <stdlib.h>
-#include <netinet/in.h>
 #include <syslog.h>
+#include <netinet/in.h>
 #include <unistd.h>
+
+#ifndef __linux__
+#include <strings.h>
+#endif
 
 #include "tacplus.h"
 #include "libtac.h"
@@ -32,8 +37,8 @@
 #include <librouter/defines.h>
 #include <librouter/pam.h>
 
-int tac_account_send(int fd, int type, const char *user, char *tty,
-	 struct tac_attrib *attr) {
+int tac_account_send(int fd, int type, const char *user, char *tty, struct tac_attrib *attr)
+{
 	HDR *th;
 	struct acct tb;
 	u_char user_len, port_len;
@@ -53,7 +58,7 @@ int tac_account_send(int fd, int type, const char *user, char *tty,
  	th->version=TAC_PLUS_VER_0;
  	th->encryption=tac_encryption ? TAC_PLUS_ENCRYPTED : TAC_PLUS_CLEAR;
 
-	TACDEBUG((LOG_DEBUG, "%s: user '%s', tty '%s', encrypt: %s, type: %s", \
+	TACDEBUG((LOG_DEBUG, "TACACS+: %s: user '%s', tty '%s', encrypt: %s, type: %s", \
 			__FUNCTION__, user, tty, \
 			(tac_encryption) ? "yes" : "no", \
 			(type == TAC_PLUS_ACCT_FLAG_START) ? "START" : "STOP"))
@@ -82,8 +87,6 @@ int tac_account_send(int fd, int type, const char *user, char *tty,
 		break;
 	}
 
-
-	tb.priv_lvl=TAC_PLUS_PRIV_LVL_MIN;
 	if(strcmp(tac_login,"chap") == 0) {
 		tb.authen_type=TAC_PLUS_AUTHEN_TYPE_CHAP;
 	} else if(strcmp(tac_login,"login") == 0) {
@@ -91,19 +94,33 @@ int tac_account_send(int fd, int type, const char *user, char *tty,
 	} else {
 		tb.authen_type=TAC_PLUS_AUTHEN_TYPE_PAP;
 	}
+
 	tb.authen_service=TAC_PLUS_AUTHEN_SVC_LOGIN;
+	tb.priv_lvl=TAC_PLUS_PRIV_LVL_USR;
+
 	tb.user_len=user_len;
 	tb.port_len=port_len;
 	tb.rem_addr_len=0;
 
 	/* allocate packet */
-	pkt=(u_char *) xcalloc(1, TAC_ACCT_REQ_FIXED_FIELDS_SIZE);
-	pkt_len=sizeof(tb);
+	pkt = (u_char *) xcalloc(1, TAC_ACCT_REQ_FIXED_FIELDS_SIZE);
+	pkt_len = sizeof(tb);
 
 	/* fill attribute length fields */
 	a = attr;
 	while(a) {
-		
+		/* Hack para accounting d comandos primarios (antes do ENABLE) com privilegio 1, e depois do ENABLE, com privilegio 15 ou 7*/
+		/* syslog(LOG_DEBUG, "%s: user '%s', attr-> %s",__FUNCTION__, user, a->attr); */
+		if (strstr(a->attr, "priv-lvl")){
+			if (strstr(a->attr,"15") || strstr(a->attr,"7")){
+				tb.priv_lvl = librouter_pam_get_privilege();
+				if ( (!strcmp(user, "admin")) || (!strcmp(user, "root")) || (tb.priv_lvl == 0) )
+					tb.priv_lvl = TAC_PLUS_PRIV_LVL_MAX;
+			}
+			else
+				tb.priv_lvl = TAC_PLUS_PRIV_LVL_USR;
+		}
+
 		pktl = pkt_len;
 		pkt_len += sizeof(a->attr_len);
 	    pkt = xrealloc(pkt, pkt_len);
@@ -145,7 +162,6 @@ int tac_account_send(int fd, int type, const char *user, char *tty,
 	a = attr;
 	while(a) {
 		PUTATTR(a->attr, a->attr_len)
-
 		a = a->next;
 	}
 
@@ -156,7 +172,7 @@ int tac_account_send(int fd, int type, const char *user, char *tty,
  	w=write(fd, th, TAC_PLUS_HDR_SIZE);
 
 	if(w < TAC_PLUS_HDR_SIZE) {
-		syslog(LOG_ERR, "%s: acct hdr send failed: wrote %d of %d",
+		syslog(LOG_ERR, "TACACS+: %s: acct hdr send failed: wrote %d of %d",
 				__FUNCTION__, w,
 				TAC_PLUS_HDR_SIZE);
 		free(pkt);
@@ -170,7 +186,7 @@ int tac_account_send(int fd, int type, const char *user, char *tty,
 	/* write body */
 	w=write(fd, pkt, pkt_len);
 	if(w < pkt_len) {
-		syslog(LOG_ERR, "%s: acct body send failed: wrote %d of %d", 
+		syslog(LOG_ERR, "TACACS+: %s: acct body send failed: wrote %d of %d",
 				__FUNCTION__, w,
 				pkt_len);
 		ret = -1;

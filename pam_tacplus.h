@@ -19,6 +19,10 @@
  * See `CHANGES' file for revision history.
  */
 
+#ifndef CONFIG_PD3
+#define CONFIG_PD3
+#endif
+
 /* pam_tacplus command line options */
 #define PAM_TAC_DEBUG		0x01
 #define PAM_TAC_ENCRYPT		0x02
