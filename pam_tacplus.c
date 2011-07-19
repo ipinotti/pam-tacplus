@@ -46,6 +46,7 @@
 #include "pam_tacplus.h"
 #include "support.h"
 
+#include <librouter/defines.h>
 #include <librouter/args.h>
 #include <librouter/pam.h>
 
@@ -681,7 +682,7 @@ int pam_sm_acct_mgmt(pam_handle_t * pamh, int flags, int argc, const char **argv
 	tacacs_server_t *srv_i;
 	u_long tac_servers[TAC_MAX_SERVERS];
 	int tac_timeout[TAC_MAX_SERVERS];
-	int i;
+	int mode = 0;
 
 	if (!tac_srv) {
 		retval = initialize(&tac_srv);
@@ -726,21 +727,10 @@ int pam_sm_acct_mgmt(pam_handle_t * pamh, int flags, int argc, const char **argv
 	if (ctrl & PAM_TAC_DEBUG)
 		syslog(LOG_DEBUG, "%s: tty obtained [%s]", __FUNCTION__, tty);
 
-
-	/*CONFIG_PD3*/
-#ifdef OLDER_IMPLEMENT_GET_SECRET
 	/* If there are no active servers, check for data file */
 	if (!active_server){
 		_get_config((char *) user);
 	}
-#else
-	/*CONFIG_PD3*/
-	/* Hack para garantir que a variavel tac_secret seja restaurada do arquivo,
-	 * ja que ela sofre FREE na authentication, perdendo o valor para authorization exec*/
-
-	/* If there are no active servers, check for data file */
-	_get_config((char *) user);
-#endif
 
 	if (ctrl & PAM_TAC_CMD_AUTHOR) {
 		/*CONFIG_PD3*/
@@ -801,57 +791,82 @@ int pam_sm_acct_mgmt(pam_handle_t * pamh, int flags, int argc, const char **argv
 
 	tac_encryption = active_encryption;
 
+	status = PAM_PERM_DENIED;
+
+	if (ctrl & PAM_TAC_CMD_AUTHOR)
+		mode = librouter_pam_get_current_cmd_author_mode(FILE_PAM_CLI);
+	else
+		mode = librouter_pam_get_current_author_mode(FILE_PAM_LOGIN);
+
+	for (srv_i = tac_srv; srv_i; srv_i = srv_i->next) {
 	/* No active server, so perhaps we were not authenticated by TACACS+.
 	 * Try all configured servers then! */
-	if (!active_server) {
 		if (tac_secret != NULL){
 			free(tac_secret);
 			tac_secret = NULL;
 		}
 		tac_secret = (char *) _xcalloc(strlen(tac_srv->secret) + 1);
-		strcpy(tac_secret, tac_srv->secret);
+		strcpy(tac_secret, srv_i->secret);
 		if (strlen(tac_secret))
 			tac_encryption = 1;
 		else
 			tac_encryption = 0;
 
-		for (srv_i = tac_srv, i = 0; srv_i; srv_i = srv_i->next, i++) {
-			tac_servers[i] = srv_i->ip.s_addr;
-			tac_timeout[i] = srv_i->timeout;
+		if (ctrl & PAM_TAC_CMD_AUTHOR)
+			syslog(LOG_INFO, "TACACS+: trying authorizing command with %s", srv_i->hostname);
+		else
+			syslog(LOG_INFO, "TACACS+: trying authorizing exec/login with %s", srv_i->hostname);
+
+		tac_fd = tac_connect_single(srv_i->ip.s_addr, srv_i->timeout);
+		if (tac_fd < 0) {
+			_pam_log(LOG_WARNING, "TACACS+: %s: server unavailable", __FUNCTION__);
+			if (mode == AAA_AUTHOR_TACACS_LOCAL || mode == AAA_AUTHOR_NONE)
+				status = PAM_AUTHINFO_UNAVAIL;
+			else
+				status = PAM_PERM_DENIED;
+			continue;
 		}
-		tac_fd = tac_connect(tac_servers, tac_timeout, i);
-	} else
-		tac_fd = tac_connect_single(active_server, 3); /* FIXME Timeout hardcoded */
 
-	if (tac_fd < 0) {
-		_pam_log(LOG_ERR, "TACACS+: server unavailable");
-		status = PAM_AUTH_ERR;
-		goto ErrExit;
+		if (ctrl & PAM_TAC_DEBUG)
+			syslog(LOG_DEBUG, "%s: connected with fd=%d (srv %s)", __FUNCTION__, tac_fd, srv_i->hostname);
+
+		retval = tac_author_send(tac_fd, user, tty, attr);
+
+		if (retval < 0) {
+			_pam_log(LOG_ERR, "TACACS+: error getting authorization - server unavailable");
+			/*CONFIG_PD3*/
+			/* Hack para retornar PAM_AUTHINFO_UNAVAIL e autorizar login quando tacacs server falha, assumindo local */
+			/*status = PAM_AUTH_ERR;*/
+			if (mode == AAA_AUTHOR_TACACS_LOCAL || mode == AAA_AUTHOR_NONE)
+				status = PAM_AUTHINFO_UNAVAIL;
+			else
+				status = PAM_PERM_DENIED;
+			continue;
+		}
+
+		if (ctrl & PAM_TAC_DEBUG)
+			syslog(LOG_DEBUG, "%s: sent authorization request", __FUNCTION__);
+
+		tac_author_read(tac_fd, &arep);
+
+		if (arep.status != AUTHOR_STATUS_PASS_ADD && arep.status != AUTHOR_STATUS_PASS_REPL) {
+			_pam_log(LOG_ERR, "TACACS+ authorization failed for [%s]", user);
+			status = PAM_PERM_DENIED;
+			if (attr != NULL)
+				tac_free_attrib(&attr);
+			goto ErrExit;
+		}
+		else{
+			status = 0;
+			break;
+		}
 	}
 
-	retval = tac_author_send(tac_fd, user, tty, attr);
+	if (attr != NULL)
+		tac_free_attrib(&attr);
 
-	tac_free_attrib(&attr);
-
-	if (retval < 0) {
-		_pam_log(LOG_ERR, "TACACS+: error getting authorization");
-		/*CONFIG_PD3*/
-		/* Hack para retornar PAM_AUTHINFO_UNAVAIL e autorizar login quando tacacs server falha, assumindo local */
-		/*status = PAM_AUTH_ERR;*/
-		status = PAM_AUTHINFO_UNAVAIL;
+	if (status == PAM_AUTHINFO_UNAVAIL || status == PAM_PERM_DENIED)
 		goto ErrExit;
-	}
-
-	if (ctrl & PAM_TAC_DEBUG)
-		syslog(LOG_DEBUG, "%s: sent authorization request", __FUNCTION__);
-
-	tac_author_read(tac_fd, &arep);
-
-	if (arep.status != AUTHOR_STATUS_PASS_ADD && arep.status != AUTHOR_STATUS_PASS_REPL) {
-		_pam_log(LOG_ERR, "TACACS+ authorization failed for [%s]", user);
-		status = PAM_PERM_DENIED;
-		goto ErrExit;
-	}
 
 	if (ctrl & PAM_TAC_DEBUG)
 		syslog(LOG_DEBUG, "%s: user [%s] successfully authorized", __FUNCTION__, user);
@@ -913,7 +928,9 @@ int pam_sm_acct_mgmt(pam_handle_t * pamh, int flags, int argc, const char **argv
 	if (arep.attr != NULL)
 		tac_free_attrib(&arep.attr);
 
-	ErrExit: close(tac_fd);
+ErrExit:
+	close(tac_fd);
+	cleanup(&tac_srv);
 
 	return status;
 } /* pam_sm_acct_mgmt */
