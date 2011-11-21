@@ -30,9 +30,6 @@
 /* Define to 1 if you have the `crypto' library (-lcrypto). */
 #undef HAVE_LIBCRYPTO
 
-/* Define to 1 if you have the `iptc' library (-liptc). */
-#undef HAVE_LIBIPTC
-
 /* Define to 1 if you have the `m' library (-lm). */
 #undef HAVE_LIBM
 
