@@ -36,9 +36,6 @@
 /* Define to 1 if you have the `ncurses' library (-lncurses). */
 #undef HAVE_LIBNCURSES
 
-/* Define to 1 if you have the `netsnmp' library (-lnetsnmp). */
-#undef HAVE_LIBNETSNMP
-
 /* Define to 1 if you have the `pam' library (-lpam). */
 #undef HAVE_LIBPAM
 
